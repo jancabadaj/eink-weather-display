@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Viewer</title>
+  <style>
+    body {
+      text-align: center;
+      background-color: #f5f5f5;
+    }
+
+    #image-container {
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      background-color: white;
+      display: inline-block;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #image-container img {
+      display: block;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Image Viewer</h1>
+  <div id="image-container">
+    <img id="output-image" src="/output.bmp" alt="Generated Image">
+  </div>
+
+  <script>
+    const img = document.getElementById('output-image');
+
+    // Reload image with cache busting
+    function reloadContent() {
+      const timestamp = new Date().getTime();
+      img.src = '/output.bmp?' + timestamp;
+    }
+
+    // Set up WebSocket connection
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.onopen = () => console.log('WebSocket connection established');
+    ws.onerror = error => console.error('WebSocket error:', error);
+    ws.onclose = () => console.log('WebSocket connection closed');
+    ws.onmessage = event => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'reload-image') {
+        console.log(`Reload image triggered`);
+        reloadContent();
+      }
+    };
+  </script>
+</body>
+
+</html>
