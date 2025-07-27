@@ -1,0 +1,6 @@
+#pragma once
+
+#define IMAGE_WIDTH 800
+#define IMAGE_HEIGHT 480
+#define IMAGE_WIDTH_BYTE ((IMAGE_WIDTH % 8 == 0) ? (IMAGE_WIDTH / 8) : (IMAGE_WIDTH / 8 + 1))
+#define IMAGE_HEIGHT_BYTE IMAGE_HEIGHT

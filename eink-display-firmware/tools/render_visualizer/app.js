@@ -16,6 +16,12 @@ const srcFolderPath = path.join(__dirname, '../../src/');
 const outputDir = path.join(__dirname, 'dist');
 const indexHtmlPath = path.join(__dirname, 'index.html');
 
+// Dependencies
+const dependencies = [
+    '../../src/weatherRenderer.cpp',
+    '../../src/draw/drawUtils.cpp',
+]
+
 // Ensure output directory exists
 if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
@@ -28,7 +34,8 @@ app.use(express.static(outputDir));
 function compileCode() {
     return new Promise((resolve, reject) => {
         console.log('Compiling C++ code...');
-        exec(`g++ ${generatorCppFilePath} -o ${generatorExecutablePath} -std=c++11`, (error, stdout, stderr) => {
+
+        exec(`g++ ${generatorCppFilePath} ${dependencies.join(' ')} -o ${generatorExecutablePath} -std=gnu++17`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Compilation error: ${error.message}`);
                 return reject(error);
@@ -80,11 +87,11 @@ async function compileAndExecute() {
 
 // Send WebSocket message to all clients
 function broadcastWss(message) {
-  wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-      }
-  });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
 }
 
 // Watch for file changes
@@ -120,7 +127,7 @@ async function init() {
         console.log(`Server running at http://localhost:${port}`);
     });
     wss.on('connection', ws => {
-      console.log('WebSocket client connected');
+        console.log('WebSocket client connected');
     });
 }
 

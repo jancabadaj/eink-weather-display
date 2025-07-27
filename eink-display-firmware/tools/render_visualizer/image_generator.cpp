@@ -4,7 +4,9 @@
 #include <string>
 #include <sstream>
 #include <cstdint>
+
 #include "../../src/TestImageData.c"
+#include "../../src/weatherRenderer.h"
 
 // BMP file header structure
 #pragma pack(push, 1)
@@ -151,9 +153,29 @@ int main()
     const int width = 800;
     const int height = 480;
 
+    uint16_t imageSize = ((width % 8 == 0) ? (width / 8) : (width / 8 + 1)) * height;
+    uint8_t *imageData;
+    if ((imageData = (uint8_t *)malloc(imageSize)) == NULL)
+    {
+        return 1;
+    }
+
     // Generate a test pattern
     // std::vector<uint8_t> testData = ImageConverter::generateTestPattern(width, height);
-    std::vector<uint8_t> testData(gImage_7in5_V2, gImage_7in5_V2 + sizeof(gImage_7in5_V2) / sizeof(gImage_7in5_V2[0]));
+    // std::vector<uint8_t> testData(gImage_7in5_V2, gImage_7in5_V2 + sizeof(gImage_7in5_V2) / sizeof(gImage_7in5_V2[0]));
+
+    // Test data from imageData
+    auto renderer = std::make_unique<WeatherRenderer>(imageData);
+    renderer->renderWeather(WeatherData{
+        .internal = {
+            .temperature = 22.5,
+            .humidity = 55,
+            .pressure = 1013.25,
+            .noise = 30,
+            .co2 = 520},
+        .external = {.temperature = 20.1, .humidity = 60},
+        .timestamp = std::chrono::system_clock::now()});
+    std::vector<uint8_t> testData(imageData, imageData + imageSize);
 
     // Convert to BMP
     ImageConverter::monochromeBytesToBmp(testData, width, height, "output.bmp");

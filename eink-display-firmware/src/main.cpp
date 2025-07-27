@@ -5,12 +5,16 @@
 #include "DEV_Config.h"
 
 #include "config.h"
-#include "displayRenderer.h"
+#include "hw/displayManager.h"
 #include "webServer.h"
+#include "weatherRenderer.h"
 #include "weatherCore.h"
 
-std::shared_ptr<DisplayRenderer> renderer = std::make_shared<DisplayRenderer>();
-std::shared_ptr<WeatherCore> weatherCore = std::make_shared<WeatherCore>(renderer);
+UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
+
+std::shared_ptr<DisplayManager> displayManager = std::make_shared<DisplayManager>(imageData);
+std::shared_ptr<WeatherRenderer> renderer = std::make_shared<WeatherRenderer>(imageData);
+std::shared_ptr<WeatherCore> weatherCore = std::make_shared<WeatherCore>(renderer, displayManager);
 std::shared_ptr<WebServer> webServer = std::make_shared<WebServer>(weatherCore);
 
 void setup()
@@ -21,10 +25,8 @@ void setup()
   // EPD_7IN5_V2_Sleep();
 
   // Initialize serial and display
-  renderer->init();
+  displayManager->init();
   Serial.println("start");
-
-
 
   Serial.print("Connecting to ");
   Serial.println(config::wifiSsid);
@@ -72,13 +74,11 @@ void setup()
   */
 }
 
-
 void loop()
 {
   webServer->loop();
   weatherCore->loop();
-  
-//  Serial.print("-");
-   delay(500);
-}
 
+  //  Serial.print("-");
+  delay(500);
+}
