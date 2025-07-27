@@ -2,24 +2,15 @@
 
 #include "EPD.h"
 #include "GUI_Paint.h"
+#include "definitions.h"
 
-#define IMAGE_WIDTH EPD_7IN5_V2_WIDTH
-#define IMAGE_HEIGHT EPD_7IN5_V2_HEIGHT
+// TODO: Paint_NewImage should be removed and DEV_Module_Init can be moved to main.cpp
+// Maybe this whole class can be deleted, or reworked (see TODO in refreshDisplay)
 
 void DisplayManager::init()
 {
   DEV_Module_Init();
-
-  // Create a new image cache
-  uint16_t imageSize = ((IMAGE_WIDTH % 8 == 0) ? (IMAGE_WIDTH / 8) : (IMAGE_WIDTH / 8 + 1)) * IMAGE_HEIGHT;
-  if ((_imageData = (uint8_t *)malloc(imageSize)) == NULL)
-  {
-    Serial.println("Failed to apply for black memory...");
-    while (1)
-      ;
-  }
   Paint_NewImage(_imageData, IMAGE_WIDTH, IMAGE_HEIGHT, 0, WHITE);
-  Paint_SelectImage(_imageData);
 }
 
 // TODO: Figure out better way to init + sleep (smart pointers? init when creating and sleep when leaving scope)

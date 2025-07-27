@@ -4,6 +4,7 @@
 
 #include "DEV_Config.h"
 
+#include "definitions.h"
 #include "config.h"
 #include "hw/displayManager.h"
 #include "webServer.h"
@@ -12,20 +13,31 @@
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
 
-std::shared_ptr<DisplayManager> displayManager = std::make_shared<DisplayManager>(imageData);
-std::shared_ptr<WeatherRenderer> renderer = std::make_shared<WeatherRenderer>(imageData);
-std::shared_ptr<WeatherCore> weatherCore = std::make_shared<WeatherCore>(renderer, displayManager);
-std::shared_ptr<WebServer> webServer = std::make_shared<WebServer>(weatherCore);
+std::shared_ptr<DisplayManager> displayManager;
+std::shared_ptr<WeatherRenderer> renderer;
+std::shared_ptr<WeatherCore> weatherCore;
+std::shared_ptr<WebServer> webServer;
 
 void setup()
 {
-  // EPD_7IN5_V2_Init();
-  // EPD_7IN5_V2_Clear();
-  // EPD_7IN5_V2_Display(imageData);
-  // EPD_7IN5_V2_Sleep();
+  // Create a new image cache
+  uint16_t imageSize = ((IMAGE_WIDTH % 8 == 0) ? (IMAGE_WIDTH / 8) : (IMAGE_WIDTH / 8 + 1)) * IMAGE_HEIGHT;
+  if ((imageData = (uint8_t *)malloc(imageSize)) == NULL)
+  {
+    Serial.println("Failed to allocate memory...");
+    while (1)
+      ;
+  }
 
-  // Initialize serial and display
+  // Initialize components
+  displayManager = std::make_shared<DisplayManager>(imageData);
+  renderer = std::make_shared<WeatherRenderer>(imageData);
+  weatherCore = std::make_shared<WeatherCore>(renderer, displayManager);
+  webServer = std::make_shared<WebServer>(weatherCore);
+
+  // Initialize serial and display - must be first to allocate memory for imageData
   displayManager->init();
+  displayManager->clearDisplay();
   Serial.println("start");
 
   Serial.print("Connecting to ");
@@ -42,6 +54,7 @@ void setup()
   Serial.println(WiFi.localIP());
 
   webServer->init();
+
   /*
   DEV_Delay_ms(2000);
   Serial.println("Clear...");

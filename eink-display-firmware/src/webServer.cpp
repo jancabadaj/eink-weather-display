@@ -8,18 +8,12 @@
 #include "DEV_Config.h"
 #include "EPD.h"
 
-// Timeout handling
-unsigned long currentTime = millis();
-unsigned long previousTime = 0;
-const long timeoutTime = 2000;
-
-// API data
-String accessToken = "";
-String refreshToken = "";
-unsigned long tokenExpirationTime = 0;
+// API data - TODO: Move to somewhere else?
 String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string
 
-//------------------------ TODO: Remove all above
+// Timeout handling
+unsigned long previousTime = 0;
+const long timeoutTime = 2000;
 
 // Web server port number
 WiFiServer server(80);
@@ -39,13 +33,11 @@ void WebServer::loop()
 
     if (client)
     { // If a new client connects,
-        currentTime = millis();
-        previousTime = currentTime;
+        previousTime = millis();
         Serial.println("New Client.");
         String currentLine = ""; // make a String to hold incoming data from the client
-        while (client.connected() && currentTime - previousTime <= timeoutTime)
+        while (client.connected() && millis() - previousTime <= timeoutTime)
         { // loop while the client's connected
-            currentTime = millis();
             if (client.available())
             {                           // if there's bytes to read from the client,
                 char c = client.read(); // read a byte, then
@@ -76,12 +68,13 @@ void WebServer::loop()
 
                         // HTML page content
                         client.println("<body><h1>ESP32 Web Server</h1>");
-                        client.println("<p>Current time : " + String(currentTime) + "</p><br/>");
+                        client.println("<p>Current time : " + String(millis()) + "</p><br/>");
 
                         // Display current state
-                        client.println("<p>AccessToken : " + accessToken + "</p>");
-                        client.println("<p>RefreshToken : " + refreshToken + "</p>");
-                        client.println("<p>ExpirationTime : " + String(tokenExpirationTime) + "</p>");
+                        auto authData = _weatherCore->getAuthData();
+                        client.println("<p>AccessToken : " + authData.accessToken + "</p>");
+                        client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
+                        client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTime) + "</p>");
 
                         // Login button
                         String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +
@@ -136,31 +129,7 @@ void WebServer::handleRequest(WiFiClient &client)
     if (header.indexOf("GET /data/get") >= 0)
     {
         Serial.println("Get data");
-
-        HTTPClient http;
-        String serverPath = "https://api.netatmo.com/api/getstationsdata";
-        http.begin(serverPath.c_str());
-        http.addHeader("Authorization", "Bearer " + accessToken);
-
-        // Send HTTP GET request
-        int httpResponseCode = http.GET();
-        if (httpResponseCode > 0)
-        {
-            Serial.print("HTTP Response code: ");
-            Serial.println(httpResponseCode);
-            String payload = http.getString();
-            Serial.println(payload);
-
-            // TODO: Parse response
-        }
-        else
-        {
-            Serial.print("Error code: ");
-            Serial.println(httpResponseCode);
-        }
-
-        // Free resources
-        http.end();
+        _weatherCore->reloadData();
         return;
     }
 
@@ -169,72 +138,9 @@ void WebServer::handleRequest(WiFiClient &client)
     int index = header.indexOf(search);
     if (index >= 0) // Obtain token using authorization code
     {
-        HTTPClient http;
-        String serverPath = "https://api.netatmo.com/oauth2/token";
-        http.begin(serverPath.c_str());
-
-        // Specify content-type header
-        http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
+        Serial.println("Authenticate");
         String code = header.substring(index + search.length(), header.indexOf(" ", index + search.length()));
-
-        // Data to send with HTTP POST
-        String httpRequestData = String("") +
-                                 "grant_type=authorization_code" + "&" +
-                                 "client_id=" + String(config::apiClientId) + "&" +
-                                 "client_secret=" + String(config::apiClientSecret) + "&" +
-                                 "code=" + code + "&" +
-                                 "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
-                                 "scope=read_station";
-
-        Serial.print("body: ");
-        Serial.println(httpRequestData);
-
-        // Send HTTP POST request
-        int httpResponseCode = http.POST(httpRequestData);
-        if (httpResponseCode > 0)
-        {
-            Serial.print("HTTP Response code: ");
-            Serial.println(httpResponseCode);
-            String payload = http.getString();
-            Serial.println(payload);
-
-            StaticJsonDocument<384> doc;
-
-            // Deserialize the JSON document
-            DeserializationError error = deserializeJson(doc, payload);
-
-            // Test if parsing succeeds.
-            if (error)
-            {
-                Serial.print(F("deserializeJson() failed: "));
-                Serial.println(error.f_str());
-                return;
-            }
-
-            // Fetch values.
-            //
-            // Most of the time, you can rely on the implicit casts.
-            // In other case, you can do doc["time"].as<long>();
-            const char *access_token = doc["access_token"];
-            const char *refresh_token = doc["refresh_token"];
-            long expires_in = doc["expires_in"];
-
-            accessToken = String(access_token);
-            refreshToken = String(refresh_token);
-            tokenExpirationTime = currentTime + expires_in * 1000; // Expiration time is in seconds
-
-            // TODO: before getting station data, check expiration time if still valid (maybe need to store current time when requesting token)
-            //       if not valid, auto request new one with refrfesh token
-        }
-        else
-        {
-            Serial.print("Error code: ");
-            Serial.println(httpResponseCode);
-        }
-
-        // Free resources
-        http.end();
+        _weatherCore->authenticate(code);
         return;
     }
 }
