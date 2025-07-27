@@ -1,7 +1,9 @@
+#pragma once
+
 namespace config
 {
-    const char *wifiSsid = "wifi";
-    const char *wifiPassword = "pass";
-    const char *apiClientId = "clientId";
-    const char *apiClientSecret = "clientSecret";
+    inline const char *wifiSsid = "wifi";
+    inline const char *wifiPassword = "pass";
+    inline const char *apiClientId = "clientId";
+    inline const char *apiClientSecret = "clientSecret";
 }

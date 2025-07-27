@@ -1,32 +1,30 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
+
+#include "DEV_Config.h"
 
 #include "config.h"
+#include "displayRenderer.h"
+#include "webServer.h"
+#include "weatherCore.h"
 
-// Web server port number
-WiFiServer server(80);
-
-// Variable to store the HTTP request
-String header;
-
-// API data
-String accessToken = "";
-String refreshToken = "";
-unsigned long tokenExpirationTime = 0;
-String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string
-
-// Timeout handling
-unsigned long currentTime = millis();
-unsigned long previousTime = 0;
-const long timeoutTime = 2000;
-
-void handleRequest(WiFiClient &client);
+std::shared_ptr<DisplayRenderer> renderer = std::make_shared<DisplayRenderer>();
+std::shared_ptr<WeatherCore> weatherCore = std::make_shared<WeatherCore>(renderer);
+std::shared_ptr<WebServer> webServer = std::make_shared<WebServer>(weatherCore);
 
 void setup()
 {
-  Serial.begin(115200);
+  // EPD_7IN5_V2_Init();
+  // EPD_7IN5_V2_Clear();
+  // EPD_7IN5_V2_Display(imageData);
+  // EPD_7IN5_V2_Sleep();
+
+  // Initialize serial and display
+  renderer->init();
+  Serial.println("start");
+
+
 
   Serial.print("Connecting to ");
   Serial.println(config::wifiSsid);
@@ -40,200 +38,47 @@ void setup()
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  server.begin();
+
+  webServer->init();
+  /*
+  DEV_Delay_ms(2000);
+  Serial.println("Clear...");
+  clearDisplay();
+
+  DEV_Delay_ms(5000);
+  Serial.println("Draw...");
+
+  // Paint
+  Paint_Clear(WHITE);
+  Paint_DrawPoint(10, 80, BLACK, DOT_PIXEL_1X1, DOT_STYLE_DFT);
+  Paint_DrawPoint(10, 90, BLACK, DOT_PIXEL_2X2, DOT_STYLE_DFT);
+  Paint_DrawPoint(10, 100, BLACK, DOT_PIXEL_3X3, DOT_STYLE_DFT);
+  Paint_DrawLine(20, 70, 70, 120, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+  Paint_DrawLine(70, 70, 20, 120, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+  Paint_DrawRectangle(20, 70, 70, 120, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
+  Paint_DrawRectangle(80, 70, 130, 120, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
+  Paint_DrawCircle(45, 95, 20, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
+  Paint_DrawCircle(105, 95, 20, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
+  Paint_DrawLine(85, 95, 125, 95, BLACK, DOT_PIXEL_1X1, LINE_STYLE_DOTTED);
+  Paint_DrawLine(105, 75, 105, 115, BLACK, DOT_PIXEL_1X1, LINE_STYLE_DOTTED);
+  Paint_DrawString_EN(10, 0, "waveshare", &Font16, BLACK, WHITE);
+  Paint_DrawString_EN(10, 20, "hello world", &Font12, WHITE, BLACK);
+  Paint_DrawNum(10, 33, 123456789, &Font12, BLACK, WHITE);
+  Paint_DrawNum(10, 50, 987654321, &Font16, WHITE, BLACK);
+  Paint_DrawString_CN(130, 0, " 你好abc", &Font12CN, BLACK, WHITE);
+  Paint_DrawString_CN(130, 20, "微雪电子", &Font24CN, WHITE, BLACK);
+
+  refreshDisplay();
+  */
 }
+
 
 void loop()
 {
-  WiFiClient client = server.available(); // Listen for incoming clients
-
-  Serial.print("-");
-  delay(500);
-
-  if (client)
-  { // If a new client connects,
-    currentTime = millis();
-    previousTime = currentTime;
-    Serial.println("New Client.");
-    String currentLine = ""; // make a String to hold incoming data from the client
-    while (client.connected() && currentTime - previousTime <= timeoutTime)
-    { // loop while the client's connected
-      currentTime = millis();
-      if (client.available())
-      {                         // if there's bytes to read from the client,
-        char c = client.read(); // read a byte, then
-        Serial.write(c);        // print it out the serial monitor
-        header += c;
-        if (c == '\n')
-        { // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0)
-          {
-            handleRequest(client);
-
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
-
-            // HTML page head
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px; font-size: 30px; margin: 2px; cursor: pointer;}");
-            client.println("</style></head>");
-
-            // HTML page content
-            client.println("<body><h1>ESP32 Web Server</h1>");
-            client.println("<p>Current time : " + String(currentTime) + "</p><br/>");
-
-            // Display current state
-            client.println("<p>AccessToken : " + accessToken + "</p>");
-            client.println("<p>RefreshToken : " + refreshToken + "</p>");
-            client.println("<p>ExpirationTime : " + String(tokenExpirationTime) + "</p>");
-
-            // Login button
-            String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +
-                              "&redirect_uri=http://" + WiFi.localIP().toString() +
-                              "&scope=read_station&state=" + uniqueState;
-            client.println("<p><a href=\"" + loginUri + "\"><button class=\"button\">Login</button></a></p>");
-
-            client.println("<p><a href=\"/data/get\"><button class=\"button\">Retrieve data</button></a></p>");
-
-            // The HTTP response ends with another blank line
-            client.println("</body></html>");
-            client.println();
-            // Break out of the while loop
-            break;
-          }
-          else
-          { // if you got a newline, then clear currentLine
-            currentLine = "";
-          }
-        }
-        else if (c != '\r')
-        {                   // if you got anything else but a carriage return character,
-          currentLine += c; // add it to the end of the currentLine
-        }
-      }
-    }
-    // Clear the header variable
-    header = "";
-    // Close the connection
-    client.stop();
-    Serial.println("Client disconnected.");
-    Serial.println("");
-  }
+  webServer->loop();
+  weatherCore->loop();
+  
+//  Serial.print("-");
+   delay(500);
 }
 
-void handleRequest(WiFiClient &client)
-{
-  if (header.indexOf("GET /data/get") >= 0)
-  {
-    Serial.println("Get data");
-
-    HTTPClient http;
-    String serverPath = "https://api.netatmo.com/api/getstationsdata";
-    http.begin(serverPath.c_str());
-    http.addHeader("Authorization", "Bearer " + accessToken);
-
-    // Send HTTP GET request
-    int httpResponseCode = http.GET();
-    if (httpResponseCode > 0)
-    {
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-      String payload = http.getString();
-      Serial.println(payload);
-
-      // TODO: Parse response
-    }
-    else
-    {
-      Serial.print("Error code: ");
-      Serial.println(httpResponseCode);
-    }
-
-    // Free resources
-    http.end();
-    return;
-  }
-
-  // Check if request is redirection from login page
-  String search = "GET /?state=" + uniqueState + "&code=";
-  int index = header.indexOf(search);
-  if (index >= 0) // Obtain token using authorization code
-  {
-    HTTPClient http;
-    String serverPath = "https://api.netatmo.com/oauth2/token";
-    http.begin(serverPath.c_str());
-
-    // Specify content-type header
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    String code = header.substring(index + search.length(), header.indexOf(" ", index + search.length()));
-
-    // Data to send with HTTP POST
-    String httpRequestData = String("") +
-                             "grant_type=authorization_code" + "&" +
-                             "client_id=" + String(config::apiClientId) + "&" +
-                             "client_secret=" + String(config::apiClientSecret) + "&" +
-                             "code=" + code + "&" +
-                             "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
-                             "scope=read_station";
-
-    Serial.print("body: ");
-    Serial.println(httpRequestData);
-
-    // Send HTTP POST request
-    int httpResponseCode = http.POST(httpRequestData);
-    if (httpResponseCode > 0)
-    {
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-      String payload = http.getString();
-      Serial.println(payload);
-
-      StaticJsonDocument<384> doc;
-
-      // Deserialize the JSON document
-      DeserializationError error = deserializeJson(doc, payload);
-
-      // Test if parsing succeeds.
-      if (error)
-      {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.f_str());
-        return;
-      }
-
-      // Fetch values.
-      //
-      // Most of the time, you can rely on the implicit casts.
-      // In other case, you can do doc["time"].as<long>();
-      const char *access_token = doc["access_token"];
-      const char *refresh_token = doc["refresh_token"];
-      long expires_in = doc["expires_in"];
-
-      accessToken = String(access_token);
-      refreshToken = String(refresh_token);
-      tokenExpirationTime = currentTime + expires_in * 1000; // Expiration time is in seconds
-
-      // TODO: before getting station data, check expiration time if still valid (maybe need to store current time when requesting token)
-      //       if not valid, auto request new one with refrfesh token
-    }
-    else
-    {
-      Serial.print("Error code: ");
-      Serial.println(httpResponseCode);
-    }
-
-    // Free resources
-    http.end();
-    return;
-  }
-}
