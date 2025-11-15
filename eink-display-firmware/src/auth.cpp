@@ -6,28 +6,48 @@
 #include "config.h"
 #include "definitions.h"
 
+AuthData const &Auth::getAuthData() const
+{
+    return authData;
+}
+
 void Auth::login(const String &code)
+{
+    String requestBody = String("") +
+                         "grant_type=authorization_code" + "&" +
+                         "client_id=" + String(config::apiClientId) + "&" +
+                         "client_secret=" + String(config::apiClientSecret) + "&" +
+                         "code=" + code + "&" +
+                         "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
+                         "scope=read_station";
+
+    exchangeToken(requestBody);
+}
+
+void Auth::refreshTokenIfNeeded()
+{
+    Serial.println("Refreshing token...");
+
+    String requestBody = String("") +
+                         "grant_type=refresh_token" + "&" +
+                         "client_id=" + String(config::apiClientId) + "&" +
+                         "client_secret=" + String(config::apiClientSecret) + "&" +
+                         "refresh_token=" + authData.refreshToken;
+
+    exchangeToken(requestBody);
+}
+
+bool Auth::exchangeToken(const String &requestBody)
 {
     HTTPClient http;
     http.begin(NETATMO_SERVER_AUTH);
-
-    // Specify content-type header
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    // Data to send with HTTP POST
-    String httpRequestData = String("") +
-                             "grant_type=authorization_code" + "&" +
-                             "client_id=" + String(config::apiClientId) + "&" +
-                             "client_secret=" + String(config::apiClientSecret) + "&" +
-                             "code=" + code + "&" +
-                             "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
-                             "scope=read_station";
-
     Serial.print("body: ");
-    Serial.println(httpRequestData);
+    Serial.println(requestBody);
 
     // Send HTTP POST request
-    int httpResponseCode = http.POST(httpRequestData);
+    int httpResponseCode = http.POST(requestBody);
     if (httpResponseCode > 0)
     {
         Serial.print("HTTP Response code: ");
@@ -37,43 +57,31 @@ void Auth::login(const String &code)
 
         StaticJsonDocument<384> doc;
 
-        // Deserialize the JSON document
         DeserializationError error = deserializeJson(doc, payload);
-
-        // Test if parsing succeeds.
         if (error)
         {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
-            return;
+            http.end();
+            return false;
         }
 
-        // Fetch values.
-        //
-        // Most of the time, you can rely on the implicit casts.
-        // In other case, you can do doc["time"].as<long>();
         const char *access_token = doc["access_token"];
         const char *refresh_token = doc["refresh_token"];
         long expires_in = doc["expires_in"];
 
         authData.accessToken = String(access_token);
         authData.refreshToken = String(refresh_token);
-        authData.tokenExpirationTime = millis() + expires_in * 1000; // Expiration time is in seconds
+        authData.tokenExpirationTimeMs = millis() + expires_in * 1000; // expires_in is in seconds
 
-        // TODO: before getting station data, check expiration time if still valid (maybe need to store current time when requesting token)
-        //       if not valid, auto request new one with refrfesh token
+        http.end();
+        return true;
     }
     else
     {
         Serial.print("Error code: ");
         Serial.println(httpResponseCode);
+        http.end();
+        return false;
     }
-
-    // Free resources
-    http.end();
-}
-
-AuthData const &Auth::getAuthData() const
-{
-    return authData;
 }

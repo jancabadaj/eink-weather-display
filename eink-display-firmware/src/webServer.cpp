@@ -74,7 +74,7 @@ void WebServer::loop()
                         auto authData = _auth->getAuthData();
                         client.println("<p>AccessToken : " + authData.accessToken + "</p>");
                         client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
-                        client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTime) + "</p>");
+                        client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTimeMs) + "</p>");
 
                         // Login button
                         String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +

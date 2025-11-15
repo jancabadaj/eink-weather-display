@@ -7,3 +7,5 @@
 
 #define NETATMO_SERVER_AUTH "https://api.netatmo.com/oauth2/token"
 #define NETATMO_SERVER_DATA "https://api.netatmo.com/api/getstationsdata"
+
+#define TOKEN_REFRESH_MARGIN_MS 60000 // Refresh token 1 minute before expiration
