@@ -7,12 +7,14 @@
 #include "definitions.h"
 #include "config.h"
 #include "hw/displayManager.h"
+#include "auth.h"
 #include "webServer.h"
 #include "weatherRenderer.h"
 #include "weatherCore.h"
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
 
+std::shared_ptr<Auth> auth;
 std::shared_ptr<DisplayManager> displayManager;
 std::shared_ptr<WeatherRenderer> renderer;
 std::shared_ptr<WeatherCore> weatherCore;
@@ -30,10 +32,11 @@ void setup()
   }
 
   // Initialize components
+  auth = std::make_shared<Auth>();
   displayManager = std::make_shared<DisplayManager>(imageData);
   renderer = std::make_shared<WeatherRenderer>(imageData);
-  weatherCore = std::make_shared<WeatherCore>(renderer, displayManager);
-  webServer = std::make_shared<WebServer>(weatherCore);
+  weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager);
+  webServer = std::make_shared<WebServer>(weatherCore, auth);
 
   // Initialize serial and display - must be first to allocate memory for imageData
   displayManager->init();

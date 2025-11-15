@@ -22,8 +22,6 @@ struct WeatherData
 {
     WeatherDataInternal internal;
     WeatherDataExternal external;
-    std::chrono::system_clock::time_point timestamp;
-    // TODO: Add netatmo module timestamp + server timestamp
-    //(to see the data point of measure and retrieval)
-    // maybe later can be synchronized to try to retrieve fresh data
+    std::chrono::system_clock::time_point data_timestamp;
+    std::chrono::system_clock::time_point retrieval_timestamp;
 };

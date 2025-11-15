@@ -71,7 +71,7 @@ void WebServer::loop()
                         client.println("<p>Current time : " + String(millis()) + "</p><br/>");
 
                         // Display current state
-                        auto authData = _weatherCore->getAuthData();
+                        auto authData = _auth->getAuthData();
                         client.println("<p>AccessToken : " + authData.accessToken + "</p>");
                         client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
                         client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTime) + "</p>");
@@ -140,7 +140,7 @@ void WebServer::handleRequest(WiFiClient &client)
     {
         Serial.println("Authenticate");
         String code = header.substring(index + search.length(), header.indexOf(" ", index + search.length()));
-        _weatherCore->authenticate(code);
+        _auth->login(code);
         return;
     }
 }

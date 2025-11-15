@@ -11,80 +11,10 @@ void WeatherCore::loop()
     // Here handle the logic of fetching weather data, processing it, and rendering it
 }
 
-void WeatherCore::authenticate(const String &code)
-{
-    HTTPClient http;
-    http.begin(NETATMO_SERVER_AUTH);
-
-    // Specify content-type header
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    // Data to send with HTTP POST
-    String httpRequestData = String("") +
-                             "grant_type=authorization_code" + "&" +
-                             "client_id=" + String(config::apiClientId) + "&" +
-                             "client_secret=" + String(config::apiClientSecret) + "&" +
-                             "code=" + code + "&" +
-                             "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
-                             "scope=read_station";
-
-    Serial.print("body: ");
-    Serial.println(httpRequestData);
-
-    // Send HTTP POST request
-    int httpResponseCode = http.POST(httpRequestData);
-    if (httpResponseCode > 0)
-    {
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
-        String payload = http.getString();
-        Serial.println(payload);
-
-        StaticJsonDocument<384> doc;
-
-        // Deserialize the JSON document
-        DeserializationError error = deserializeJson(doc, payload);
-
-        // Test if parsing succeeds.
-        if (error)
-        {
-            Serial.print(F("deserializeJson() failed: "));
-            Serial.println(error.f_str());
-            return;
-        }
-
-        // Fetch values.
-        //
-        // Most of the time, you can rely on the implicit casts.
-        // In other case, you can do doc["time"].as<long>();
-        const char *access_token = doc["access_token"];
-        const char *refresh_token = doc["refresh_token"];
-        long expires_in = doc["expires_in"];
-
-        authData.accessToken = String(access_token);
-        authData.refreshToken = String(refresh_token);
-        authData.tokenExpirationTime = millis() + expires_in * 1000; // Expiration time is in seconds
-
-        // TODO: before getting station data, check expiration time if still valid (maybe need to store current time when requesting token)
-        //       if not valid, auto request new one with refrfesh token
-    }
-    else
-    {
-        Serial.print("Error code: ");
-        Serial.println(httpResponseCode);
-    }
-
-    // Free resources
-    http.end();
-}
-
-AuthData const &WeatherCore::getAuthData() const
-{
-    return authData;
-}
-
 void WeatherCore::reloadData()
 {
+    AuthData authData = _auth->getAuthData();
+
     HTTPClient http;
     http.begin(NETATMO_SERVER_DATA);
     http.addHeader("Authorization", "Bearer " + authData.accessToken);
@@ -142,13 +72,17 @@ void WeatherCore::parseWeatherData(const String &payload)
     external.humidity = externalDash["Humidity"] | 0;
 
     // Timestamp (use internal time_utc)
-    long time_utc = internalDash["time_utc"] | 0;
-    std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::from_time_t(time_utc);
+    long data_utc = internalDash["time_utc"] | 0;
+    std::chrono::system_clock::time_point data_timestamp = std::chrono::system_clock::from_time_t(data_utc);
+
+    long retrieval_utc = doc["time_server"] | 0;
+    std::chrono::system_clock::time_point retrieval_timestamp = std::chrono::system_clock::from_time_t(retrieval_utc);
 
     weatherData = {
         .internal = internal,
         .external = external,
-        .timestamp = timestamp};
+        .data_timestamp = data_timestamp,
+        .retrieval_timestamp = retrieval_timestamp};
 }
 
 // TODO: Temporary debug, delete it?

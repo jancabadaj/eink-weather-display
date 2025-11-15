@@ -47,7 +47,7 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
     DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 180, 150, tempStr, &font, Black);
 
     // Timestamp
-    std::time_t timestamp = std::chrono::system_clock::to_time_t(data.timestamp);
+    std::time_t timestamp = std::chrono::system_clock::to_time_t(data.data_timestamp);
     std::tm *tm = std::localtime(&timestamp);
     char timeStr[64];
     std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tm);
