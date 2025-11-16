@@ -72,6 +72,7 @@ void WebServer::loop()
 
                         // Display current state
                         auto authData = _auth->getAuthData();
+                        client.println("<p>LoggedIn: " + String(_auth->isLoggedIn() ? "Yes" : "No") + "</p>");
                         client.println("<p>AccessToken : " + authData.accessToken + "</p>");
                         client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
                         client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTimeMs) + "</p>");
@@ -84,7 +85,7 @@ void WebServer::loop()
 
                         client.println("<p><a href=\"/data/get\"><button class=\"button\">Retrieve data</button></a></p>");
 
-                        client.println("<p><a href=\"/display/print\"><button class=\"button\">Print data</button></a></p>");
+                        client.println("<p><a href=\"/display/restart\"><button class=\"button\">Restart auto updates</button></a></p>");
 
                         client.println("<p><a href=\"/display/clear\"><button class=\"button\">Clear display</button></a></p>");
 
@@ -116,14 +117,14 @@ void WebServer::loop()
 
 void WebServer::handleRequest(WiFiClient &client)
 {
-    if (header.indexOf("GET /display/print") >= 0)
+    if (header.indexOf("GET /display/restart") >= 0)
     {
-        _weatherCore->drawWeatherData();
+        _weatherCore->restartUpdateLoop();
         return;
     }
     if (header.indexOf("GET /display/clear") >= 0)
     {
-        _weatherCore->clearDisplay();
+        _displayManager->clearDisplay();
         return;
     }
     if (header.indexOf("GET /data/get") >= 0)

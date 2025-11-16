@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <esp_sleep.h>
 
 #include "DEV_Config.h"
 
 #include "definitions.h"
 #include "config.h"
+#include "updateSchedule.h"
 #include "hw/displayManager.h"
 #include "auth.h"
 #include "webServer.h"
@@ -36,7 +38,7 @@ void setup()
   displayManager = std::make_shared<DisplayManager>(imageData);
   renderer = std::make_shared<WeatherRenderer>(imageData);
   weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager);
-  webServer = std::make_shared<WebServer>(weatherCore, auth);
+  webServer = std::make_shared<WebServer>(weatherCore, displayManager, auth);
 
   // Initialize serial and display - must be first to allocate memory for imageData
   displayManager->init();
@@ -95,6 +97,7 @@ void loop()
   webServer->loop();
   weatherCore->loop();
 
-  //  Serial.print("-");
-  delay(500);
+  // Light sleep - maintains WiFi connection
+  esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
+  esp_light_sleep_start();
 }

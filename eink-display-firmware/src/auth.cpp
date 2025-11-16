@@ -11,6 +11,11 @@ AuthData const &Auth::getAuthData() const
     return authData;
 }
 
+const bool Auth::isLoggedIn() const
+{
+    return loggedIn;
+}
+
 void Auth::login(const String &code)
 {
     String requestBody = String("") +
@@ -75,13 +80,16 @@ bool Auth::exchangeToken(const String &requestBody)
         authData.tokenExpirationTimeMs = millis() + expires_in * 1000; // expires_in is in seconds
 
         http.end();
+        loggedIn = true;
         return true;
     }
     else
     {
+        // TODO: Print network error image on display
         Serial.print("Error code: ");
         Serial.println(httpResponseCode);
         http.end();
+        loggedIn = false;
         return false;
     }
 }

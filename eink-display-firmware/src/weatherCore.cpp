@@ -8,11 +8,45 @@
 
 void WeatherCore::loop()
 {
-    // Here handle the logic of fetching weather data, processing it, and rendering it
+    if (_updateLoopStopped || !_auth->isLoggedIn())
+    {
+        return;
+    }
+
+    // Fetch initial data on first run
+    if (!_hasInitialData)
+    {
+        Serial.println("[WeatherCore] Initial data fetch");
+        reloadData();
+        return;
+    }
+
+    // Check if it's time for scheduled refresh
+    unsigned long nextRefreshMillis = _scheduler->getNextScheduledRefreshMillis();
+    if (millis() >= nextRefreshMillis)
+    {
+        Serial.println("[WeatherCore] Scheduled refresh triggered");
+        reloadData();
+    }
+}
+
+void WeatherCore::restartUpdateLoop()
+{
+    if (_updateLoopStopped)
+    {
+        Serial.println("[WeatherCore] Restarting update loop");
+        _consecutiveFailures = 0;
+        _hasInitialData = false;
+        _updateLoopStopped = false;
+    }
 }
 
 void WeatherCore::reloadData()
 {
+    unsigned long startTime = millis();
+    _lastRefreshAttemptMillis = startTime;
+
+    _auth->refreshTokenIfNeeded();
     AuthData authData = _auth->getAuthData();
 
     HTTPClient http;
@@ -23,17 +57,46 @@ void WeatherCore::reloadData()
     int httpResponseCode = http.GET();
     if (httpResponseCode > 0)
     {
-        Serial.print("HTTP Response code: ");
+        Serial.print("[WeatherCore] HTTP Response code: ");
         Serial.println(httpResponseCode);
         String payload = http.getString();
-        Serial.println(payload);
+
+        // Store previous data timestamp for interval calculation
+        auto previousDataTimestamp = weatherData.data_timestamp;
 
         parseWeatherData(payload);
+
+        // Calculate data update interval if we have previous data
+        if (_hasInitialData && previousDataTimestamp.time_since_epoch().count() > 0)
+        {
+            auto timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(
+                weatherData.data_timestamp - previousDataTimestamp);
+
+            if (timeDiff.count() > 0)
+            {
+                unsigned long intervalMs = timeDiff.count();
+                handleRefreshSuccess(intervalMs);
+            }
+        }
+        else
+        {
+            // First data fetch
+            handleRefreshSuccess(0);
+        }
+
+        _hasInitialData = true;
+
+        // Update display with new data
+        Serial.println("[WeatherCore] Updating display...");
+        _renderer->renderWeather(weatherData);
+        _displayManager->refreshDisplay();
+        Serial.println("[WeatherCore] Display updated");
     }
     else
     {
-        Serial.print("Error code: ");
+        Serial.print("[WeatherCore] Error code: ");
         Serial.println(httpResponseCode);
+        handleRefreshFailure();
     }
 
     // Free resources
@@ -85,23 +148,58 @@ void WeatherCore::parseWeatherData(const String &payload)
         .retrieval_timestamp = retrieval_timestamp};
 }
 
-// TODO: Temporary debug, delete it?
-void WeatherCore::clearDisplay()
+unsigned long WeatherCore::getCurrentUtcTimeMillis()
 {
-    _displayManager->clearDisplay();
+    if (weatherData.retrieval_timestamp.time_since_epoch().count() == 0)
+    {
+        return millis();
+    }
+
+    auto serverTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+        weatherData.retrieval_timestamp.time_since_epoch());
+
+    unsigned long elapsedSinceRetrieval = millis() - _lastRefreshAttemptMillis;
+    return serverTime.count() + elapsedSinceRetrieval;
 }
 
-// TODO: Temporary debug, delete it?
-void WeatherCore::drawWeatherData()
+void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
 {
-    /* This function can be used to draw weather data on the display
-    WeatherData data = {
-        .internal = {25.0f, 60, 1013.3f, 30, 400},
-        .external = {22.0f, 55},
-        .timestamp = std::chrono::system_clock::now()};
+    _consecutiveFailures = 0;
 
-    _renderer->renderWeather(data);*/
-    _renderer->renderWeather(weatherData);
+    if (intervalMs > 0)
+    {
+        _scheduler->addIntervalSample(intervalMs);
+    }
 
-    _displayManager->refreshDisplay();
+    // Schedule next refresh
+    unsigned long currentUtcTimeMs = getCurrentUtcTimeMillis();
+    unsigned long nextRefreshDelay = _scheduler->calculateNextRefreshDelay(currentUtcTimeMs);
+    _scheduler->setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
+}
+
+void WeatherCore::handleRefreshFailure()
+{
+    _consecutiveFailures++;
+
+    Serial.print("[WeatherCore] Consecutive failures: ");
+    Serial.print(_consecutiveFailures);
+    Serial.print("/");
+    Serial.println(UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
+
+    if (_consecutiveFailures >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
+    {
+        Serial.println("[WeatherCore] Max failures reached! Clearing display and stopping updates.");
+        _displayManager->clearDisplay();
+        _updateLoopStopped = true;
+    }
+    else
+    {
+        // Schedule retry with minimum interval
+        unsigned long retryDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
+        _scheduler->setNextScheduledRefreshMillis(millis() + retryDelay);
+
+        Serial.print("[WeatherCore] Retry scheduled in ");
+        Serial.print(retryDelay / 1000);
+        Serial.println(" seconds");
+    }
 }
