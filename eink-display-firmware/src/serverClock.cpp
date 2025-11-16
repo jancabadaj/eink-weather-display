@@ -2,14 +2,17 @@
 #include "serverClock.h"
 #include "logger.h"
 
-void ServerClock::syncTime(unsigned long syncTimeMillis, std::chrono::system_clock::time_point serverTime)
+void ServerClock::syncTime(unsigned long syncTimeMillis, std::chrono::milliseconds serverTime)
 {
     _lastSyncMillis = syncTimeMillis;
-    _serverTimeAtSync = serverTime;
+    _serverTimeAtSync = serverTime.count();
     _hasSynced = true;
+    logger.debug("[ServerClock] Syncing time. Server time: %llu, Sync millis: %lu",
+                 _serverTimeAtSync,
+                 syncTimeMillis);
 }
 
-unsigned long ServerClock::getUtcTime() const
+unsigned long long ServerClock::getUtcTime() const
 {
     if (!_hasSynced)
     {
@@ -17,12 +20,9 @@ unsigned long ServerClock::getUtcTime() const
         return millis();
     }
 
-    auto serverTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-        _serverTimeAtSync.time_since_epoch());
-
     unsigned long elapsedSinceSync = millis() - _lastSyncMillis;
-    unsigned long currentUtcMs = serverTimeMs.count() + elapsedSinceSync;
-    logger.debug("[ServerClock] Current UTC time calculated: %lu (server time: %lu, elapsed since sync: %lu)",
-                 currentUtcMs, serverTimeMs.count(), elapsedSinceSync);
+    unsigned long long currentUtcMs = _serverTimeAtSync + elapsedSinceSync;
+    logger.debug("[ServerClock] Current UTC time calculated: %llu (server time: %llu, elapsed since sync: %lu)",
+                 currentUtcMs, _serverTimeAtSync, elapsedSinceSync);
     return currentUtcMs;
 }

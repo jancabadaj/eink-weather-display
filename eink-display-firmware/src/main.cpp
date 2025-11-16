@@ -65,7 +65,7 @@ void setup()
 
   // Initialize Google Sheets logging
   logger.init(config::logDeploymentId, config::logApiKey);
-  logger.setLogLevel(LogLevel::INFO); // DEBUG causes conflicts with web server due to HTTPClient interference
+  logger.setLogLevel(LogLevel::INFO);
 
   webServer->init();
 

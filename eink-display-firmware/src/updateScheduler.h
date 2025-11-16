@@ -46,7 +46,7 @@ public:
 
 private:
     unsigned long getMedianInterval() const;
-    static int getCurrentHour(unsigned long currentUtcTimestampMs);
+    static int getCurrentHour(unsigned long long currentUtcTimestampMs);
     static bool isNightTime(int hour);
 
     std::shared_ptr<ServerClock> _serverClock;

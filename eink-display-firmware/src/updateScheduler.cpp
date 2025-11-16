@@ -54,9 +54,9 @@ unsigned long UpdateScheduler::getMedianInterval() const
 
 bool UpdateScheduler::scheduleNextRefresh(unsigned long dataUtcTimestampMs)
 {
-    unsigned long currentUtcTimestampMs = _serverClock->getUtcTime();
-    logger.debug("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %lu, Data timestamp: %lu",
-                 currentUtcTimestampMs / 1000, dataUtcTimestampMs / 1000);
+    unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
+    logger.debug("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %lu, Data timestamp: %llu",
+                 currentUtcTimestampMs, dataUtcTimestampMs);
     int currentHour = getCurrentHour(currentUtcTimestampMs);
     bool isNight = isNightTime(currentHour);
 
@@ -131,7 +131,7 @@ bool UpdateScheduler::scheduleNextRefresh(unsigned long dataUtcTimestampMs)
     return true;
 }
 
-int UpdateScheduler::getCurrentHour(unsigned long currentUtcTimestampMs)
+int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)
 {
     time_t currentTimeSec = currentUtcTimestampMs / 1000;
 

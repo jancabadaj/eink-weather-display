@@ -22,6 +22,6 @@ struct WeatherData
 {
     WeatherDataInternal internal;
     WeatherDataExternal external;
-    std::chrono::system_clock::time_point data_timestamp;
-    std::chrono::system_clock::time_point retrieval_timestamp;
+    std::chrono::milliseconds data_timestamp;
+    std::chrono::milliseconds retrieval_timestamp;
 };
