@@ -13,6 +13,7 @@
 #include "webServer.h"
 #include "weatherRenderer.h"
 #include "weatherCore.h"
+#include "logger.h"
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
 
@@ -43,7 +44,6 @@ void setup()
   // Initialize serial and display - must be first to allocate memory for imageData
   displayManager->init();
   displayManager->clearDisplay();
-  Serial.println("start");
 
   Serial.print("Connecting to ");
   Serial.println(config::wifiSsid);
@@ -57,6 +57,10 @@ void setup()
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
+  // Initialize Google Sheets logging
+  logger.init(config::logDeploymentId, config::logApiKey);
+  logger.setLogLevel(LogLevel::DEBUG);
 
   webServer->init();
 

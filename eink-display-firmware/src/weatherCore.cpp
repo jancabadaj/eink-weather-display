@@ -5,6 +5,7 @@
 #include "weatherCore.h"
 #include "config.h"
 #include "definitions.h"
+#include "logger.h"
 
 void WeatherCore::loop()
 {
@@ -16,7 +17,7 @@ void WeatherCore::loop()
     // Fetch initial data on first run
     if (!_hasInitialData)
     {
-        Serial.println("[WeatherCore] Initial data fetch");
+        logger.info("[WeatherCore] Initial data fetch");
         reloadData();
         return;
     }
@@ -25,7 +26,7 @@ void WeatherCore::loop()
     unsigned long nextRefreshMillis = _scheduler->getNextScheduledRefreshMillis();
     if (millis() >= nextRefreshMillis)
     {
-        Serial.println("[WeatherCore] Scheduled refresh triggered");
+        logger.info("[WeatherCore] Scheduled refresh triggered");
         reloadData();
     }
 }
@@ -34,7 +35,7 @@ void WeatherCore::restartUpdateLoop()
 {
     if (_updateLoopStopped)
     {
-        Serial.println("[WeatherCore] Restarting update loop");
+        logger.info("[WeatherCore] Restarting update loop");
         _consecutiveFailures = 0;
         _hasInitialData = false;
         _updateLoopStopped = false;
@@ -57,8 +58,7 @@ void WeatherCore::reloadData()
     int httpResponseCode = http.GET();
     if (httpResponseCode > 0)
     {
-        Serial.print("[WeatherCore] HTTP Response code: ");
-        Serial.println(httpResponseCode);
+        logger.info("[WeatherCore] HTTP Response code: %d", httpResponseCode);
         String payload = http.getString();
 
         // Store previous data timestamp for interval calculation
@@ -87,15 +87,14 @@ void WeatherCore::reloadData()
         _hasInitialData = true;
 
         // Update display with new data
-        Serial.println("[WeatherCore] Updating display...");
+        logger.info("[WeatherCore] Updating display...");
         _renderer->renderWeather(weatherData);
         _displayManager->refreshDisplay();
-        Serial.println("[WeatherCore] Display updated");
+        logger.info("[WeatherCore] Display updated");
     }
     else
     {
-        Serial.print("[WeatherCore] Error code: ");
-        Serial.println(httpResponseCode);
+        logger.error("[WeatherCore] HTTP error code: %d", httpResponseCode);
         handleRefreshFailure();
     }
 
@@ -110,8 +109,7 @@ void WeatherCore::parseWeatherData(const String &payload)
 
     if (error)
     {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.f_str());
+        logger.error("[WeatherCore] deserializeJson() failed: %s", error.f_str());
         return;
     }
 
@@ -181,14 +179,12 @@ void WeatherCore::handleRefreshFailure()
 {
     _consecutiveFailures++;
 
-    Serial.print("[WeatherCore] Consecutive failures: ");
-    Serial.print(_consecutiveFailures);
-    Serial.print("/");
-    Serial.println(UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
+    logger.warning("[WeatherCore] Consecutive failures: %d/%d",
+                   _consecutiveFailures, UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
 
     if (_consecutiveFailures >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
     {
-        Serial.println("[WeatherCore] Max failures reached! Clearing display and stopping updates.");
+        logger.error("[WeatherCore] Max failures reached! Clearing display and stopping updates.");
         _displayManager->clearDisplay();
         _updateLoopStopped = true;
     }
@@ -198,8 +194,6 @@ void WeatherCore::handleRefreshFailure()
         unsigned long retryDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
         _scheduler->setNextScheduledRefreshMillis(millis() + retryDelay);
 
-        Serial.print("[WeatherCore] Retry scheduled in ");
-        Serial.print(retryDelay / 1000);
-        Serial.println(" seconds");
+        logger.info("[WeatherCore] Retry scheduled in %lu seconds", retryDelay / 1000);
     }
 }

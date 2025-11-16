@@ -7,6 +7,7 @@
 #include "config.h"
 #include "DEV_Config.h"
 #include "EPD.h"
+#include "logger.h"
 
 // API data - TODO: Move to somewhere else?
 String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string
@@ -24,7 +25,7 @@ String header;
 void WebServer::init()
 {
     server.begin();
-    Serial.println("HTTP server started");
+    logger.info("[WebServer] HTTP server started");
 }
 
 void WebServer::loop()
@@ -34,14 +35,13 @@ void WebServer::loop()
     if (client)
     { // If a new client connects,
         previousTime = millis();
-        Serial.println("New Client.");
+        logger.debug("[WebServer] New client connected");
         String currentLine = ""; // make a String to hold incoming data from the client
         while (client.connected() && millis() - previousTime <= timeoutTime)
         { // loop while the client's connected
             if (client.available())
             {                           // if there's bytes to read from the client,
-                char c = client.read(); // read a byte, then
-                Serial.write(c);        // print it out the serial monitor
+                char c = client.read(); // read a byte
                 header += c;
                 if (c == '\n')
                 { // if the byte is a newline character
@@ -110,8 +110,7 @@ void WebServer::loop()
         header = "";
         // Close the connection
         client.stop();
-        Serial.println("Client disconnected.");
-        Serial.println("");
+        logger.debug("[WebServer] Client disconnected");
     }
 }
 
@@ -124,12 +123,13 @@ void WebServer::handleRequest(WiFiClient &client)
     }
     if (header.indexOf("GET /display/clear") >= 0)
     {
+        logger.info("[WebServer] Clear display requested");
         _displayManager->clearDisplay();
         return;
     }
     if (header.indexOf("GET /data/get") >= 0)
     {
-        Serial.println("Get data");
+        logger.info("[WebServer] Manual data refresh requested");
         _weatherCore->reloadData();
         return;
     }
@@ -139,7 +139,7 @@ void WebServer::handleRequest(WiFiClient &client)
     int index = header.indexOf(search);
     if (index >= 0) // Obtain token using authorization code
     {
-        Serial.println("Authenticate");
+        logger.info("[WebServer] Authentication callback received");
         String code = header.substring(index + search.length(), header.indexOf(" ", index + search.length()));
         _auth->login(code);
         return;

@@ -5,6 +5,7 @@
 #include "auth.h"
 #include "config.h"
 #include "definitions.h"
+#include "logger.h"
 
 AuthData const &Auth::getAuthData() const
 {
@@ -31,7 +32,7 @@ void Auth::login(const String &code)
 
 void Auth::refreshTokenIfNeeded()
 {
-    Serial.println("Refreshing token...");
+    logger.info("[Auth] Refreshing token...");
 
     String requestBody = String("") +
                          "grant_type=refresh_token" + "&" +
@@ -48,25 +49,22 @@ bool Auth::exchangeToken(const String &requestBody)
     http.begin(NETATMO_SERVER_AUTH);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    Serial.print("body: ");
-    Serial.println(requestBody);
+    logger.debug("[Auth] Request body: %s", requestBody.c_str());
 
     // Send HTTP POST request
     int httpResponseCode = http.POST(requestBody);
     if (httpResponseCode > 0)
     {
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
         String payload = http.getString();
-        Serial.println(payload);
+        logger.info("[Auth] HTTP Response code: %d", httpResponseCode);
+        logger.debug("[Auth] Response payload: %s", payload.c_str());
 
         StaticJsonDocument<384> doc;
 
         DeserializationError error = deserializeJson(doc, payload);
         if (error)
         {
-            Serial.print(F("deserializeJson() failed: "));
-            Serial.println(error.f_str());
+            logger.error("[Auth] deserializeJson() failed: %s", error.f_str());
             http.end();
             return false;
         }
@@ -81,13 +79,13 @@ bool Auth::exchangeToken(const String &requestBody)
 
         http.end();
         loggedIn = true;
+        logger.info("[Auth] Token exchange successful");
         return true;
     }
     else
     {
         // TODO: Print network error image on display
-        Serial.print("Error code: ");
-        Serial.println(httpResponseCode);
+        logger.error("[Auth] HTTP error code: %d", httpResponseCode);
         http.end();
         loggedIn = false;
         return false;

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "updateSchedule.h"
+#include "logger.h"
 
 UpdateScheduler::UpdateScheduler() {}
 
@@ -8,13 +9,10 @@ void UpdateScheduler::addIntervalSample(unsigned long intervalMs)
     if (intervalMs < UpdateSchedule::MIN_VALID_INTERVAL_MS ||
         intervalMs > UpdateSchedule::MAX_VALID_INTERVAL_MS)
     {
-        Serial.print("[UpdateScheduler] Ignoring invalid sample: ");
-        Serial.print(intervalMs / 1000);
-        Serial.print("s (expected ");
-        Serial.print(UpdateSchedule::MIN_VALID_INTERVAL_MS / 1000);
-        Serial.print("-");
-        Serial.print(UpdateSchedule::MAX_VALID_INTERVAL_MS / 1000);
-        Serial.println("s)");
+        logger.warning("[UpdateScheduler] Ignoring invalid sample: %lus (expected %lu-%lus)",
+                       intervalMs / 1000,
+                       UpdateSchedule::MIN_VALID_INTERVAL_MS / 1000,
+                       UpdateSchedule::MAX_VALID_INTERVAL_MS / 1000);
         return;
     }
 
@@ -26,13 +24,10 @@ void UpdateScheduler::addIntervalSample(unsigned long intervalMs)
         _sampleCount++;
     }
 
-    Serial.print("[UpdateScheduler] Sample added: ");
-    Serial.print(intervalMs / 1000);
-    Serial.print("s (");
-    Serial.print(_sampleCount);
-    Serial.print("/");
-    Serial.print(UpdateSchedule::INTERVAL_SAMPLE_SIZE);
-    Serial.println(")");
+    logger.debug("[UpdateScheduler] Sample added: %lus (%u/%u)",
+                 intervalMs / 1000,
+                 _sampleCount,
+                 UpdateSchedule::INTERVAL_SAMPLE_SIZE);
 }
 
 unsigned long UpdateScheduler::getMedianInterval() const
@@ -88,12 +83,9 @@ unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUt
 
         nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
 
-        Serial.print("[UpdateScheduler] Night - no updates until ");
-        Serial.print(UpdateSchedule::NIGHT_END_HOUR_UTC);
-        Serial.print(" UTC (");
-        Serial.print(nextRefreshDelay / 1000);
-        Serial.print("s remaining)");
-        Serial.println();
+        logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (%lus remaining)",
+                    UpdateSchedule::NIGHT_END_HOUR_UTC,
+                    nextRefreshDelay / 1000);
     }
     else
     {
@@ -103,26 +95,20 @@ unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUt
         {
             nextRefreshDelay = medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
 
-            Serial.print("[UpdateScheduler] Adaptive: ");
-            Serial.print(nextRefreshDelay / 1000);
-            Serial.print("s (median: ");
-            Serial.print(medianInterval / 1000);
-            Serial.print("s, n=");
-            Serial.print(_sampleCount);
-            Serial.println(")");
+            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u)",
+                        nextRefreshDelay / 1000,
+                        medianInterval / 1000,
+                        _sampleCount);
         }
         else
         {
             nextRefreshDelay = UpdateSchedule::DEFAULT_UPDATE_INTERVAL_MS;
-            Serial.print("[UpdateScheduler] Default: ");
-            Serial.print(nextRefreshDelay / 1000);
-            Serial.println("s (learning...)");
+            logger.info("[UpdateScheduler] Default schedule: %lus (learning...)",
+                        nextRefreshDelay / 1000);
         }
     }
 
-    Serial.print("[UpdateScheduler] Next: ");
-    Serial.print(nextRefreshDelay / 1000);
-    Serial.println("s");
+    logger.info("[UpdateScheduler] Next refresh in: %lus", nextRefreshDelay / 1000);
 
     return nextRefreshDelay;
 }
