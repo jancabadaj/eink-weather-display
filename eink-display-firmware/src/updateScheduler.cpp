@@ -98,21 +98,19 @@ bool UpdateScheduler::scheduleNextRefresh(unsigned long long dataUtcTimestampMs)
 
         if (medianInterval > 0)
         {
-            unsigned long expectedNextDataTimeMs = dataUtcTimestampMs + medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
+            unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
             long delayFromNow = (long)(expectedNextDataTimeMs - currentUtcTimestampMs);
 
             if (delayFromNow < (long)UpdateSchedule::MIN_REFRESH_INTERVAL_MS)
             {
                 nextRefreshDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
-                logger.warning("[UpdateScheduler] Data overdue - using minimum delay: %lus",
-                               nextRefreshDelay / 1000);
             }
             else
             {
                 nextRefreshDelay = (unsigned long)delayFromNow;
             }
 
-            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u, data age: %lus)",
+            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u, data age: %llus)",
                         nextRefreshDelay / 1000,
                         medianInterval / 1000,
                         _sampleCount,

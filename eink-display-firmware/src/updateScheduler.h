@@ -25,7 +25,7 @@ namespace UpdateSchedule
 
     // ============= RETRY AND ERROR HANDLING
     // Minimum interval between refresh attempts (prevent rapid retries on errors)
-    constexpr unsigned long MIN_REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+    constexpr unsigned long MIN_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
     // Maximum consecutive failures before stopping updates and clearing display
     constexpr int MAX_CONSECUTIVE_FAILURES = 3;
 

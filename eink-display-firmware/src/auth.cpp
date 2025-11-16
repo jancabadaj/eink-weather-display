@@ -32,15 +32,21 @@ void Auth::login(const String &code)
 
 void Auth::refreshTokenIfNeeded()
 {
-    logger.info("[Auth] Refreshing token...");
+    // Refresh if logged in and token expires within 60 seconds
+    if (loggedIn && (millis() + 60000) > authData.tokenExpirationTimeMs)
+    {
+        logger.info("[Auth] Refreshing token (expiration at %lu, current time %lu)",
+                    authData.tokenExpirationTimeMs,
+                    millis());
 
-    String requestBody = String("") +
-                         "grant_type=refresh_token" + "&" +
-                         "client_id=" + String(config::apiClientId) + "&" +
-                         "client_secret=" + String(config::apiClientSecret) + "&" +
-                         "refresh_token=" + authData.refreshToken;
+        String requestBody = String("") +
+                             "grant_type=refresh_token" + "&" +
+                             "client_id=" + String(config::apiClientId) + "&" +
+                             "client_secret=" + String(config::apiClientSecret) + "&" +
+                             "refresh_token=" + authData.refreshToken;
 
-    exchangeToken(requestBody);
+        exchangeToken(requestBody);
+    }
 }
 
 bool Auth::exchangeToken(const String &requestBody)
