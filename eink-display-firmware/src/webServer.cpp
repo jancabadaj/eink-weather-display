@@ -7,7 +7,6 @@
 #include "config.h"
 #include "DEV_Config.h"
 #include "EPD.h"
-#include "logger.h"
 
 // API data - TODO: Move to somewhere else?
 String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string
@@ -25,7 +24,7 @@ String header;
 void WebServer::init()
 {
     server.begin();
-    logger.info("[WebServer] HTTP server started");
+    Serial.println("[WebServer] HTTP server started");
 }
 
 void WebServer::loop()
@@ -35,7 +34,7 @@ void WebServer::loop()
     if (client)
     { // If a new client connects,
         previousTime = millis();
-        logger.debug("[WebServer] New client connected");
+        Serial.println("[WebServer] New client connected");
         String currentLine = ""; // make a String to hold incoming data from the client
         while (client.connected() && millis() - previousTime <= timeoutTime)
         { // loop while the client's connected
@@ -49,49 +48,61 @@ void WebServer::loop()
                     // that's the end of the client HTTP request, so send a response:
                     if (currentLine.length() == 0)
                     {
-                        handleRequest(client);
+                        // Handle request and check if we need to redirect
+                        bool shouldRedirect = handleRequest(client);
 
-                        // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-                        // and a content-type so the client knows what's coming, then a blank line:
-                        client.println("HTTP/1.1 200 OK");
-                        client.println("Content-type:text/html");
-                        client.println("Connection: close");
-                        client.println();
+                        if (shouldRedirect)
+                        {
+                            // Send redirect to home page
+                            client.println("HTTP/1.1 303 See Other");
+                            client.println("Location: /");
+                            client.println("Connection: close");
+                            client.println();
+                        }
+                        else
+                        {
+                            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+                            // and a content-type so the client knows what's coming, then a blank line:
+                            client.println("HTTP/1.1 200 OK");
+                            client.println("Content-type:text/html");
+                            client.println("Connection: close");
+                            client.println();
 
-                        // HTML page head
-                        client.println("<!DOCTYPE html><html>");
-                        client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-                        client.println("<link rel=\"icon\" href=\"data:,\">");
-                        client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
-                        client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px; font-size: 30px; margin: 2px; cursor: pointer;}");
-                        client.println("</style></head>");
+                            // HTML page head
+                            client.println("<!DOCTYPE html><html>");
+                            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+                            client.println("<link rel=\"icon\" href=\"data:,\">");
+                            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
+                            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px; font-size: 30px; margin: 2px; cursor: pointer;}");
+                            client.println("</style></head>");
 
-                        // HTML page content
-                        client.println("<body><h1>ESP32 Web Server</h1>");
-                        client.println("<p>Current time : " + String(millis()) + "</p><br/>");
+                            // HTML page content
+                            client.println("<body><h1>ESP32 Web Server</h1>");
+                            client.println("<p>Current time : " + String(millis()) + "</p><br/>");
 
-                        // Display current state
-                        auto authData = _auth->getAuthData();
-                        client.println("<p>LoggedIn: " + String(_auth->isLoggedIn() ? "Yes" : "No") + "</p>");
-                        client.println("<p>AccessToken : " + authData.accessToken + "</p>");
-                        client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
-                        client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTimeMs) + "</p>");
+                            // Display current state
+                            auto authData = _auth->getAuthData();
+                            client.println("<p>LoggedIn: " + String(_auth->isLoggedIn() ? "Yes" : "No") + "</p>");
+                            client.println("<p>AccessToken : " + authData.accessToken + "</p>");
+                            client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
+                            client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTimeMs) + "</p>");
 
-                        // Login button
-                        String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +
-                                          "&redirect_uri=http://" + WiFi.localIP().toString() +
-                                          "&scope=read_station&state=" + uniqueState;
-                        client.println("<p><a href=\"" + loginUri + "\"><button class=\"button\">Login</button></a></p>");
+                            // Login button
+                            String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +
+                                              "&redirect_uri=http://" + WiFi.localIP().toString() +
+                                              "&scope=read_station&state=" + uniqueState;
+                            client.println("<p><a href=\"" + loginUri + "\"><button class=\"button\">Login</button></a></p>");
 
-                        client.println("<p><a href=\"/data/get\"><button class=\"button\">Retrieve data</button></a></p>");
+                            client.println("<p><a href=\"/data/get\"><button class=\"button\">Retrieve data</button></a></p>");
 
-                        client.println("<p><a href=\"/display/restart\"><button class=\"button\">Restart auto updates</button></a></p>");
+                            client.println("<p><a href=\"/display/restart\"><button class=\"button\">Restart auto updates</button></a></p>");
 
-                        client.println("<p><a href=\"/display/clear\"><button class=\"button\">Clear display</button></a></p>");
+                            client.println("<p><a href=\"/display/clear\"><button class=\"button\">Clear display</button></a></p>");
 
-                        // The HTTP response ends with another blank line
-                        client.println("</body></html>");
-                        client.println();
+                            // The HTTP response ends with another blank line
+                            client.println("</body></html>");
+                            client.println();
+                        }
                         // Break out of the while loop
                         break;
                     }
@@ -110,28 +121,29 @@ void WebServer::loop()
         header = "";
         // Close the connection
         client.stop();
-        logger.debug("[WebServer] Client disconnected");
+        Serial.println("[WebServer] Client disconnected");
     }
 }
 
-void WebServer::handleRequest(WiFiClient &client)
+bool WebServer::handleRequest(WiFiClient &client)
 {
     if (header.indexOf("GET /display/restart") >= 0)
     {
+        Serial.println("[WebServer] Restart auto updates requested");
         _weatherCore->restartUpdateLoop();
-        return;
+        return true;
     }
     if (header.indexOf("GET /display/clear") >= 0)
     {
-        logger.info("[WebServer] Clear display requested");
+        Serial.println("[WebServer] Clear display requested");
         _displayManager->clearDisplay();
-        return;
+        return true;
     }
     if (header.indexOf("GET /data/get") >= 0)
     {
-        logger.info("[WebServer] Manual data refresh requested");
+        Serial.println("[WebServer] Manual data refresh requested");
         _weatherCore->reloadData();
-        return;
+        return true;
     }
 
     // Check if request is redirection from login page
@@ -139,9 +151,11 @@ void WebServer::handleRequest(WiFiClient &client)
     int index = header.indexOf(search);
     if (index >= 0) // Obtain token using authorization code
     {
-        logger.info("[WebServer] Authentication callback received");
+        Serial.println("[WebServer] Authentication callback received");
         String code = header.substring(index + search.length(), header.indexOf(" ", index + search.length()));
         _auth->login(code);
-        return;
+        return true;
     }
+
+    return false; // No special action, show normal page
 }

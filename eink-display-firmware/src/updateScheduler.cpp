@@ -1,8 +1,7 @@
 #include <Arduino.h>
-#include "updateSchedule.h"
+#include <memory>
+#include "updateScheduler.h"
 #include "logger.h"
-
-UpdateScheduler::UpdateScheduler() {}
 
 void UpdateScheduler::addIntervalSample(unsigned long intervalMs)
 {
@@ -53,8 +52,11 @@ unsigned long UpdateScheduler::getMedianInterval() const
     return sortedSamples[medianIndex];
 }
 
-unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUtcTimestampMs)
+bool UpdateScheduler::scheduleNextRefresh(unsigned long dataUtcTimestampMs)
 {
+    unsigned long currentUtcTimestampMs = _serverClock->getUtcTime();
+    logger.debug("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %lu, Data timestamp: %lu",
+                 currentUtcTimestampMs / 1000, dataUtcTimestampMs / 1000);
     int currentHour = getCurrentHour(currentUtcTimestampMs);
     bool isNight = isNightTime(currentHour);
 
@@ -83,9 +85,12 @@ unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUt
 
         nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
 
-        logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (%lus remaining)",
+        logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
                     UpdateSchedule::NIGHT_END_HOUR_UTC,
+                    currentHour,
                     nextRefreshDelay / 1000);
+        setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
+        return false;
     }
     else
     {
@@ -93,12 +98,25 @@ unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUt
 
         if (medianInterval > 0)
         {
-            nextRefreshDelay = medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
+            unsigned long expectedNextDataTimeMs = dataUtcTimestampMs + medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
+            long delayFromNow = (long)(expectedNextDataTimeMs - currentUtcTimestampMs);
 
-            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u)",
+            if (delayFromNow < (long)UpdateSchedule::MIN_REFRESH_INTERVAL_MS)
+            {
+                nextRefreshDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
+                logger.warning("[UpdateScheduler] Data overdue - using minimum delay: %lus",
+                               nextRefreshDelay / 1000);
+            }
+            else
+            {
+                nextRefreshDelay = (unsigned long)delayFromNow;
+            }
+
+            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u, data age: %lus)",
                         nextRefreshDelay / 1000,
                         medianInterval / 1000,
-                        _sampleCount);
+                        _sampleCount,
+                        (currentUtcTimestampMs - dataUtcTimestampMs) / 1000);
         }
         else
         {
@@ -109,8 +127,8 @@ unsigned long UpdateScheduler::calculateNextRefreshDelay(unsigned long currentUt
     }
 
     logger.info("[UpdateScheduler] Next refresh in: %lus", nextRefreshDelay / 1000);
-
-    return nextRefreshDelay;
+    setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
+    return true;
 }
 
 int UpdateScheduler::getCurrentHour(unsigned long currentUtcTimestampMs)

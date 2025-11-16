@@ -5,11 +5,6 @@
 // Global logger instance
 Logger logger;
 
-Logger::Logger(const char *deviceName)
-    : _deviceName(deviceName), _minLevel(LogLevel::DEBUG), _googleSheetsEnabled(false)
-{
-}
-
 void Logger::init(const char *deploymentId, const char *apiKey)
 {
     // Check if both credentials are provided
@@ -76,11 +71,6 @@ void Logger::log(LogLevel level, const char *format, ...)
 
 void Logger::logInternal(LogLevel level, const char *format, va_list args)
 {
-    if (level < _minLevel)
-    {
-        return;
-    }
-
     // Format the message
     vsnprintf(_buffer, LOG_BUFFER_SIZE, format, args);
 
@@ -91,7 +81,7 @@ void Logger::logInternal(LogLevel level, const char *format, va_list args)
     Serial.println(_buffer);
 
     // Send to Google Sheets if enabled and WiFi is connected
-    if (_googleSheetsEnabled && WiFi.status() == WL_CONNECTED)
+    if (level >= _minLevel && _googleSheetsEnabled && WiFi.status() == WL_CONNECTED)
     {
         sendToGoogleSheets(_buffer, level);
     }

@@ -1,5 +1,4 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -14,7 +13,8 @@ enum class LogLevel
 class Logger
 {
 public:
-    Logger(const char *deviceName = "ESP32-WeatherDisplay");
+    Logger(const char *deviceName = "ESP32-WeatherDisplay")
+        : _deviceName(deviceName), _minLevel(LogLevel::DEBUG), _googleSheetsEnabled(false) {}
 
     // Initialize with Google Sheets credentials (empty strings = Serial only)
     void init(const char *deploymentId, const char *apiKey);
@@ -51,5 +51,3 @@ private:
 
 // Global logger instance
 extern Logger logger;
-
-#endif // LOGGER_H

@@ -44,9 +44,6 @@ void WeatherCore::restartUpdateLoop()
 
 void WeatherCore::reloadData()
 {
-    unsigned long startTime = millis();
-    _lastRefreshAttemptMillis = startTime;
-
     _auth->refreshTokenIfNeeded();
     AuthData authData = _auth->getAuthData();
 
@@ -55,6 +52,7 @@ void WeatherCore::reloadData()
     http.addHeader("Authorization", "Bearer " + authData.accessToken);
 
     // Send HTTP GET request
+    unsigned long refreshAttemptMillis = millis();
     int httpResponseCode = http.GET();
     if (httpResponseCode > 0)
     {
@@ -65,6 +63,9 @@ void WeatherCore::reloadData()
         auto previousDataTimestamp = weatherData.data_timestamp;
 
         parseWeatherData(payload);
+
+        // Sync clock with server time
+        _serverClock->syncTime(refreshAttemptMillis, weatherData.retrieval_timestamp);
 
         // Calculate data update interval if we have previous data
         if (_hasInitialData && previousDataTimestamp.time_since_epoch().count() > 0)
@@ -87,7 +88,13 @@ void WeatherCore::reloadData()
         _hasInitialData = true;
 
         // Update display with new data
-        logger.info("[WeatherCore] Updating display...");
+        logger.info("[WeatherCore] Updating display. [Data timestamp: %lld, Server time: %lld]",
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        weatherData.data_timestamp.time_since_epoch())
+                        .count(),
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        weatherData.retrieval_timestamp.time_since_epoch())
+                        .count());
         _renderer->renderWeather(weatherData);
         _displayManager->refreshDisplay();
         logger.info("[WeatherCore] Display updated");
@@ -146,20 +153,6 @@ void WeatherCore::parseWeatherData(const String &payload)
         .retrieval_timestamp = retrieval_timestamp};
 }
 
-unsigned long WeatherCore::getCurrentUtcTimeMillis()
-{
-    if (weatherData.retrieval_timestamp.time_since_epoch().count() == 0)
-    {
-        return millis();
-    }
-
-    auto serverTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-        weatherData.retrieval_timestamp.time_since_epoch());
-
-    unsigned long elapsedSinceRetrieval = millis() - _lastRefreshAttemptMillis;
-    return serverTime.count() + elapsedSinceRetrieval;
-}
-
 void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
 {
     _consecutiveFailures = 0;
@@ -170,9 +163,15 @@ void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
     }
 
     // Schedule next refresh
-    unsigned long currentUtcTimeMs = getCurrentUtcTimeMillis();
-    unsigned long nextRefreshDelay = _scheduler->calculateNextRefreshDelay(currentUtcTimeMs);
-    _scheduler->setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
+    unsigned long dataUtcTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                      weatherData.data_timestamp.time_since_epoch())
+                                      .count();
+    bool scheduled = _scheduler->scheduleNextRefresh(dataUtcTimeMs);
+    if (!scheduled)
+    {
+        logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
+        // TODO: Draw night mode on display
+    }
 }
 
 void WeatherCore::handleRefreshFailure()

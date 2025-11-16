@@ -16,7 +16,7 @@ public:
     void loop();
 
 private:
-    void handleRequest(WiFiClient &client);
+    bool handleRequest(WiFiClient &client);
 
     std::shared_ptr<WeatherCore> _weatherCore;
     std::shared_ptr<DisplayManager> _displayManager;

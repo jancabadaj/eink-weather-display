@@ -3,6 +3,8 @@
 #include <chrono>
 #include <array>
 #include <algorithm>
+#include <memory>
+#include "serverClock.h"
 
 namespace UpdateSchedule
 {
@@ -32,19 +34,22 @@ namespace UpdateSchedule
 class UpdateScheduler
 {
 public:
-    UpdateScheduler();
+    UpdateScheduler(std::shared_ptr<ServerClock> serverClock)
+        : _serverClock(serverClock) {}
 
     void addIntervalSample(unsigned long intervalMs);
-    unsigned long calculateNextRefreshDelay(unsigned long currentUtcTimestampMs);
+    // Schedule next refresh based on data timestamp. Return false if night time.
+    bool scheduleNextRefresh(unsigned long dataUtcTimestampMs);
 
-    void setNextScheduledRefreshMillis(unsigned long millis) { _nextScheduledRefreshMillis = millis; }
     unsigned long getNextScheduledRefreshMillis() const { return _nextScheduledRefreshMillis; }
+    void setNextScheduledRefreshMillis(unsigned long nextRefreshMillis) { _nextScheduledRefreshMillis = nextRefreshMillis; }
 
 private:
     unsigned long getMedianInterval() const;
     static int getCurrentHour(unsigned long currentUtcTimestampMs);
     static bool isNightTime(int hour);
 
+    std::shared_ptr<ServerClock> _serverClock;
     std::array<unsigned long, UpdateSchedule::INTERVAL_SAMPLE_SIZE> _intervalSamples = {0};
     size_t _sampleCount = 0;
     size_t _sampleIndex = 0;

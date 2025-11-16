@@ -7,17 +7,20 @@
 
 #include "definitions.h"
 #include "config.h"
-#include "updateSchedule.h"
+#include "updateScheduler.h"
 #include "hw/displayManager.h"
 #include "auth.h"
 #include "webServer.h"
 #include "weatherRenderer.h"
 #include "weatherCore.h"
+#include "serverClock.h"
 #include "logger.h"
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
 
 std::shared_ptr<Auth> auth;
+std::shared_ptr<ServerClock> serverClock;
+std::shared_ptr<UpdateScheduler> updateScheduler;
 std::shared_ptr<DisplayManager> displayManager;
 std::shared_ptr<WeatherRenderer> renderer;
 std::shared_ptr<WeatherCore> weatherCore;
@@ -36,9 +39,11 @@ void setup()
 
   // Initialize components
   auth = std::make_shared<Auth>();
+  serverClock = std::make_shared<ServerClock>();
   displayManager = std::make_shared<DisplayManager>(imageData);
   renderer = std::make_shared<WeatherRenderer>(imageData);
-  weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager);
+  updateScheduler = std::make_shared<UpdateScheduler>(serverClock);
+  weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager, updateScheduler, serverClock);
   webServer = std::make_shared<WebServer>(weatherCore, displayManager, auth);
 
   // Initialize serial and display - must be first to allocate memory for imageData
@@ -60,7 +65,7 @@ void setup()
 
   // Initialize Google Sheets logging
   logger.init(config::logDeploymentId, config::logApiKey);
-  logger.setLogLevel(LogLevel::DEBUG);
+  logger.setLogLevel(LogLevel::INFO); // DEBUG causes conflicts with web server due to HTTPClient interference
 
   webServer->init();
 
@@ -101,7 +106,8 @@ void loop()
   webServer->loop();
   weatherCore->loop();
 
-  // Light sleep - maintains WiFi connection
-  esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
-  esp_light_sleep_start();
+  // TODO: light sleep causes issues - random reboots
+  // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
+  // esp_light_sleep_start();
+  delay(1000);
 }
