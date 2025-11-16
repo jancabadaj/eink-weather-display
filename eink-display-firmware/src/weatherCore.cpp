@@ -170,7 +170,8 @@ void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
     if (!scheduled)
     {
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
-        // TODO: Draw night mode on display
+        _renderer->renderNightModeIndicator();
+        _displayManager->refreshDisplay();
     }
 }
 

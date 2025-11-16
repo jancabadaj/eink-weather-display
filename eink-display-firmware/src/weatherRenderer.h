@@ -12,6 +12,7 @@ public:
     WeatherRenderer(uint8_t *imageData) : _imageData(imageData) {}
 
     void renderWeather(const WeatherData &data);
+    void renderNightModeIndicator();
 
 private:
     uint8_t *_imageData;
