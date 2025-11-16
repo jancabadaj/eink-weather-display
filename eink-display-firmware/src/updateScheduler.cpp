@@ -52,11 +52,11 @@ unsigned long UpdateScheduler::getMedianInterval() const
     return sortedSamples[medianIndex];
 }
 
-bool UpdateScheduler::scheduleNextRefresh(unsigned long dataUtcTimestampMs)
+bool UpdateScheduler::scheduleNextRefresh(unsigned long long dataUtcTimestampMs)
 {
     unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
-    logger.debug("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %lu, Data timestamp: %llu",
-                 currentUtcTimestampMs, dataUtcTimestampMs);
+    logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %llu, Data timestamp: %llu",
+                currentUtcTimestampMs, dataUtcTimestampMs);
     int currentHour = getCurrentHour(currentUtcTimestampMs);
     bool isNight = isNightTime(currentHour);
 

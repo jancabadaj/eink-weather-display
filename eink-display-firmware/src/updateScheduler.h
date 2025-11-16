@@ -39,7 +39,7 @@ public:
 
     void addIntervalSample(unsigned long intervalMs);
     // Schedule next refresh based on data timestamp. Return false if night time.
-    bool scheduleNextRefresh(unsigned long dataUtcTimestampMs);
+    bool scheduleNextRefresh(unsigned long long dataUtcTimestampMs);
 
     unsigned long getNextScheduledRefreshMillis() const { return _nextScheduledRefreshMillis; }
     void setNextScheduledRefreshMillis(unsigned long nextRefreshMillis) { _nextScheduledRefreshMillis = nextRefreshMillis; }
