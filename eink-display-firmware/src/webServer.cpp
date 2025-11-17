@@ -81,11 +81,10 @@ void WebServer::loop()
                             client.println("<p>Current time : " + String(millis()) + "</p><br/>");
 
                             // Display current state
-                            auto authData = _auth->getAuthData();
                             client.println("<p>LoggedIn: " + String(_auth->isLoggedIn() ? "Yes" : "No") + "</p>");
-                            client.println("<p>AccessToken : " + authData.accessToken + "</p>");
-                            client.println("<p>RefreshToken : " + authData.refreshToken + "</p>");
-                            client.println("<p>ExpirationTime : " + String(authData.tokenExpirationTimeMs) + "</p>");
+                            client.println("<p>AccessToken : " + _auth->_accessToken + "</p>");
+                            client.println("<p>RefreshToken : " + _auth->_refreshToken + "</p>");
+                            client.println("<p>ExpirationTime : " + String(_auth->_tokenExpirationTimeMs) + "</p>");
 
                             // Login button
                             String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +

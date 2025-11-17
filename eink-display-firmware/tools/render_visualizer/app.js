@@ -9,6 +9,9 @@ const app = express();
 const port = 3000;
 const wss = new WebSocket.Server({ port: 8080 });
 
+// State - remember the current render mode
+let currentRenderMode = 'weather';
+
 // Paths
 const generatorCppFilePath = path.join(__dirname, 'image_generator.cpp');
 const generatorExecutablePath = path.join(__dirname, 'dist/image_generator.out');
@@ -50,14 +53,15 @@ function compileCode() {
 }
 
 // Run the C++ executable
-function runExecutable() {
+function runExecutable(mode = 'weather') {
     return new Promise((resolve, reject) => {
-        console.log('Running executable...');
+        console.log(`Running executable with mode: ${mode}...`);
 
         // Set the working directory to public for output files
         const options = { cwd: outputDir };
+        const command = `${generatorExecutablePath} ${mode}`;
 
-        exec(generatorExecutablePath, options, (error, stdout, stderr) => {
+        exec(command, options, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Execution error: ${error.message}`);
                 return reject(error);
@@ -78,7 +82,7 @@ function runExecutable() {
 async function compileAndExecute() {
     try {
         await compileCode();
-        await runExecutable();
+        await runExecutable(currentRenderMode);
         console.log('File processed successfully');
     } catch (error) {
         console.error('Error processing file:', error);
@@ -110,6 +114,18 @@ function watchFile(filePath, callback) {
 function copyHtml() {
     fs.copyFileSync(indexHtmlPath, path.join(outputDir, 'index.html'));
 }
+
+// API endpoints for switching render modes
+app.post('/render/:mode', async (req, res) => {
+    const mode = req.params.mode;
+    try {
+        currentRenderMode = mode;
+        await runExecutable(mode);
+        res.json({ success: true, mode: mode });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Main
 async function init() {

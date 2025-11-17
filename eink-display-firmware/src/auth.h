@@ -16,4 +16,6 @@ private:
     String _accessToken;
     String _refreshToken;
     unsigned long _tokenExpirationTimeMs;
+
+    friend class WebServer;
 };

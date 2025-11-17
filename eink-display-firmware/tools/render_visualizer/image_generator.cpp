@@ -148,10 +148,17 @@ public:
 };
 
 // Example usage
-int main()
+int main(int argc, char *argv[])
 {
     const int width = 800;
     const int height = 480;
+
+    // Default render mode is "weather"
+    std::string renderMode = "weather";
+    if (argc > 1)
+    {
+        renderMode = argv[1];
+    }
 
     uint16_t imageSize = ((width % 8 == 0) ? (width / 8) : (width / 8 + 1)) * height;
     uint8_t *imageData;
@@ -160,21 +167,36 @@ int main()
         return 1;
     }
 
-    // Generate a test pattern
-    // std::vector<uint8_t> testData = ImageConverter::generateTestPattern(width, height);
-    // std::vector<uint8_t> testData(gImage_7in5_V2, gImage_7in5_V2 + sizeof(gImage_7in5_V2) / sizeof(gImage_7in5_V2[0]));
-
-    // Test data from imageData
+    // Create renderer and call appropriate render method
     auto renderer = std::make_unique<WeatherRenderer>(imageData);
-    renderer->renderWeather(WeatherData{
-        .internal = {
-            .temperature = 22.5,
-            .humidity = 55,
-            .pressure = 1013.25,
-            .noise = 30,
-            .co2 = 520},
-        .external = {.temperature = 20.1, .humidity = 60},
-        .timestamp = std::chrono::system_clock::now()});
+
+    if (renderMode == "night-mode")
+    {
+        std::cout << "Rendering night mode indicator" << std::endl;
+        renderer->renderNightModeIndicator();
+    }
+    else if (renderMode == "network-error")
+    {
+        std::cout << "Rendering network error" << std::endl;
+        renderer->renderNetworkError();
+    }
+    else
+    {
+        // Default: render weather
+        std::cout << "Rendering weather" << std::endl;
+        auto now = std::chrono::system_clock::now();
+        renderer->renderWeather(WeatherData{
+            .internal = {
+                .temperature = 22.5,
+                .humidity = 55,
+                .pressure = 1013.25,
+                .noise = 30,
+                .co2 = 520},
+            .external = {.temperature = 20.1, .humidity = 60},
+            .data_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()),
+            .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())});
+    }
+
     std::vector<uint8_t> testData(imageData, imageData + imageSize);
 
     // Convert to BMP
