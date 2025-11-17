@@ -7,18 +7,15 @@
 #include "definitions.h"
 #include "logger.h"
 
-AuthData const &Auth::getAuthData() const
-{
-    return authData;
-}
-
 const bool Auth::isLoggedIn() const
 {
-    return loggedIn;
+    return _loggedIn;
 }
 
-void Auth::login(const String &code)
+bool Auth::login(const String &code)
 {
+    logger.info("[Auth] Logging in");
+
     String requestBody = String("") +
                          "grant_type=authorization_code" + "&" +
                          "client_id=" + String(config::apiClientId) + "&" +
@@ -27,26 +24,26 @@ void Auth::login(const String &code)
                          "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
                          "scope=read_station";
 
-    exchangeToken(requestBody);
+    return exchangeToken(requestBody);
 }
 
-void Auth::refreshTokenIfNeeded()
+bool Auth::refreshTokenIfNeeded()
 {
     // Refresh if logged in and token expires within 60 seconds
-    if (loggedIn && (millis() + 60000) > authData.tokenExpirationTimeMs)
+    if (_loggedIn && (millis() + 60000) > _tokenExpirationTimeMs)
     {
-        logger.info("[Auth] Refreshing token (expiration at %lu, current time %lu)",
-                    authData.tokenExpirationTimeMs,
-                    millis());
+        logger.info("[Auth] Refreshing token (expiration at %lu, current time %lu)", _tokenExpirationTimeMs, millis());
 
         String requestBody = String("") +
                              "grant_type=refresh_token" + "&" +
                              "client_id=" + String(config::apiClientId) + "&" +
                              "client_secret=" + String(config::apiClientSecret) + "&" +
-                             "refresh_token=" + authData.refreshToken;
+                             "refresh_token=" + _refreshToken;
 
-        exchangeToken(requestBody);
+        return exchangeToken(requestBody);
     }
+
+    return true;
 }
 
 bool Auth::exchangeToken(const String &requestBody)
@@ -79,21 +76,20 @@ bool Auth::exchangeToken(const String &requestBody)
         const char *refresh_token = doc["refresh_token"];
         long expires_in = doc["expires_in"];
 
-        authData.accessToken = String(access_token);
-        authData.refreshToken = String(refresh_token);
-        authData.tokenExpirationTimeMs = millis() + expires_in * 1000; // expires_in is in seconds
+        _accessToken = String(access_token);
+        _refreshToken = String(refresh_token);
+        _tokenExpirationTimeMs = millis() + expires_in * 1000; // expires_in is in seconds
 
         http.end();
-        loggedIn = true;
+        _loggedIn = true;
         logger.info("[Auth] Token exchange successful");
         return true;
     }
     else
     {
-        // TODO: Print network error image on display
-        logger.error("[Auth] HTTP error code: %d", httpResponseCode);
+        logger.error("[Auth] HTTP error %d: %s", httpResponseCode, http.getString().c_str());
         http.end();
-        loggedIn = false;
+        _loggedIn = false;
         return false;
     }
 }

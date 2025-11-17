@@ -13,6 +13,7 @@ public:
 
     void renderWeather(const WeatherData &data);
     void renderNightModeIndicator();
+    void renderNetworkError();
 
 private:
     uint8_t *_imageData;

@@ -1,23 +1,19 @@
 #pragma once
 
-struct AuthData
-{
-    String accessToken;
-    String refreshToken;
-    unsigned long tokenExpirationTimeMs;
-};
-
 class Auth
 {
 public:
-    AuthData const &getAuthData() const;
+    String const &getAccessToken() const { return _accessToken; }
     const bool isLoggedIn() const;
 
-    void login(const String &code);
-    void refreshTokenIfNeeded();
+    bool login(const String &code);
+    bool refreshTokenIfNeeded();
 
 private:
     bool exchangeToken(const String &requestBody);
-    bool loggedIn;
-    AuthData authData;
+
+    bool _loggedIn;
+    String _accessToken;
+    String _refreshToken;
+    unsigned long _tokenExpirationTimeMs;
 };

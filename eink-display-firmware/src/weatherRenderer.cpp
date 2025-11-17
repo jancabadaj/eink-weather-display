@@ -59,5 +59,16 @@ void WeatherRenderer::renderNightModeIndicator()
 {
     Font &font = Font24Mono;
 
+    DrawUtils::clearImage(_imageData);
+
     DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 - 100, IMAGE_HEIGHT - 80, "Dobru noc", &font, Black);
+}
+
+void WeatherRenderer::renderNetworkError()
+{
+    Font &font = Font24Mono;
+
+    DrawUtils::clearImage(_imageData);
+
+    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 - 150, IMAGE_HEIGHT - 80, "Chyba", &font, Black);
 }

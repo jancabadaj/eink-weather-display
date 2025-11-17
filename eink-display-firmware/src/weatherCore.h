@@ -32,11 +32,11 @@ private:
     std::shared_ptr<ServerClock> _serverClock;
     std::shared_ptr<UpdateScheduler> _scheduler;
 
-    void parseWeatherData(const String &payload);
+    void parseAndUpdateWeatherData(const String &payload);
     void handleRefreshSuccess(unsigned long intervalMs);
     void handleRefreshFailure();
 
-    WeatherData weatherData;
+    WeatherData _weatherData;
     bool _hasInitialData = false;
     int _consecutiveFailures = 0;
     bool _updateLoopStopped = false;
