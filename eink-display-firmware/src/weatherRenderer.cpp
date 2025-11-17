@@ -2,10 +2,15 @@
 #include "weatherRenderer.h"
 #include "draw/drawUtils.h"
 #include "draw/font24.h"
+#include "draw/shapes/thermometer.h"
+#include "draw/shapes/humidity.h"
+#include "draw/shapes/pressure.h"
+#include "draw/shapes/noise.h"
+#include "draw/shapes/co2.h"
 
 void WeatherRenderer::renderWeather(const WeatherData &data)
 {
-    Font &font = Font24Mono;
+    Shape &font = Font24Mono;
 
     DrawUtils::clearImage(_imageData);
 
@@ -17,34 +22,49 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
 
     // Internal
     char tempStr[32];
-    DrawUtils::drawString(_imageData, 30, 100, "Teplota: ", &font, Black);
+
+    // Temperature
+    DrawUtils::drawIcon(_imageData, 30, 95, &ThermometerIcon, Black);
+    DrawUtils::drawString(_imageData, 60, 100, "Teplota: ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%.1f C", data.internal.temperature);
-    DrawUtils::drawString(_imageData, 180, 100, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, 210, 100, tempStr, &font, Black);
 
-    DrawUtils::drawString(_imageData, 30, 150, "Vlhkost: ", &font, Black);
+    // Humidity
+    DrawUtils::drawIcon(_imageData, 30, 145, &HumidityIcon, Black);
+    DrawUtils::drawString(_imageData, 60, 150, "Vlhkost: ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%d %%", data.internal.humidity);
-    DrawUtils::drawString(_imageData, 180, 150, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, 210, 150, tempStr, &font, Black);
 
-    DrawUtils::drawString(_imageData, 30, 200, "Tlak   : ", &font, Black);
+    // Pressure
+    DrawUtils::drawIcon(_imageData, 30, 195, &PressureIcon, Black);
+    DrawUtils::drawString(_imageData, 60, 200, "Tlak   : ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%.1f mbar", data.internal.pressure);
-    DrawUtils::drawString(_imageData, 180, 200, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, 210, 200, tempStr, &font, Black);
 
-    DrawUtils::drawString(_imageData, 30, 250, "Hluk   : ", &font, Black);
+    // Noise
+    DrawUtils::drawIcon(_imageData, 30, 245, &NoiseIcon, Black);
+    DrawUtils::drawString(_imageData, 60, 250, "Hluk   : ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%d dB", data.internal.noise);
-    DrawUtils::drawString(_imageData, 180, 250, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, 210, 250, tempStr, &font, Black);
 
-    DrawUtils::drawString(_imageData, 30, 300, "CO2    : ", &font, Black);
+    // CO2
+    DrawUtils::drawIcon(_imageData, 30, 295, &CO2Icon, Black);
+    DrawUtils::drawString(_imageData, 60, 300, "CO2    : ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%d ppm", data.internal.co2);
-    DrawUtils::drawString(_imageData, 180, 300, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, 210, 300, tempStr, &font, Black);
 
     // External
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 30, 100, "Teplota: ", &font, Black);
+    // Temperature
+    DrawUtils::drawIcon(_imageData, IMAGE_WIDTH / 2 + 30, 95, &ThermometerIcon, Black);
+    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 60, 100, "Teplota: ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%.1f C", data.external.temperature);
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 180, 100, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 210, 100, tempStr, &font, Black);
 
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 30, 150, "Vlhkost: ", &font, Black);
+    // Humidity
+    DrawUtils::drawIcon(_imageData, IMAGE_WIDTH / 2 + 30, 145, &HumidityIcon, Black);
+    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 60, 150, "Vlhkost: ", &font, Black);
     snprintf(tempStr, sizeof(tempStr), "%d %%", data.external.humidity);
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 180, 150, tempStr, &font, Black);
+    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 210, 150, tempStr, &font, Black);
 
     // Timestamp
     auto timepoint = std::chrono::system_clock::time_point(data.data_timestamp);
@@ -57,7 +77,7 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
 
 void WeatherRenderer::renderNightModeIndicator()
 {
-    Font &font = Font24Mono;
+    Shape &font = Font24Mono;
 
     DrawUtils::clearImage(_imageData);
 
@@ -66,7 +86,7 @@ void WeatherRenderer::renderNightModeIndicator()
 
 void WeatherRenderer::renderNetworkError()
 {
-    Font &font = Font24Mono;
+    Shape &font = Font24Mono;
 
     DrawUtils::clearImage(_imageData);
 

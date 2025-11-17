@@ -1,8 +1,6 @@
 #include "drawUtils.h"
 #include "../definitions.h"
 
-#include "fonts.h"
-
 #define COLOR_WHITE 0xFF
 #define COLOR_BLACK 0x00
 
@@ -98,7 +96,7 @@ void DrawUtils::drawRectangle(uint8_t *imageData, uint16_t xStart, uint16_t xEnd
     }
 }
 
-void DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const Font *font, Color color)
+void DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const Shape *font, Color color)
 {
     if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
     {
@@ -128,7 +126,7 @@ void DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const cha
     }
 }
 
-void DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char c, const Font *font, Color color)
+void DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char c, const Shape *font, Color color)
 {
     if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
     {
@@ -136,7 +134,7 @@ void DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char 
     }
 
     uint32_t charOffset = (c - ' ') * font->height * (font->width / 8 + (font->width % 8 ? 1 : 0));
-    const unsigned char *ptr = &font->table[charOffset];
+    const unsigned char *ptr = &font->bitmap[charOffset];
 
     uint16_t row, col;
     for (row = 0; row < font->height; row++)
@@ -151,6 +149,37 @@ void DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char 
         }
 
         if (font->width % 8 != 0)
+            ptr++;
+    }
+}
+
+void DrawUtils::drawIcon(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *icon, Color color)
+{
+    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    {
+        return;
+    }
+
+    if ((x + icon->width) > IMAGE_WIDTH || (y + icon->height) > IMAGE_HEIGHT)
+    {
+        return; // Icon exceeds image bounds
+    }
+
+    const unsigned char *ptr = icon->bitmap;
+
+    uint16_t row, col;
+    for (row = 0; row < icon->height; row++)
+    {
+        for (col = 0; col < icon->width; col++)
+        {
+            if (*ptr & (0x80 >> (col % 8)))
+                setPixel(imageData, x + col, y + row, color);
+
+            if (col % 8 == 7)
+                ptr++;
+        }
+
+        if (icon->width % 8 != 0)
             ptr++;
     }
 }

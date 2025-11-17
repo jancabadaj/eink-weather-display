@@ -38,7 +38,7 @@
 #pragma once
 
 /* Includes ------------------------------------------------------------------*/
-#include "fonts.h"
+#include "shape.h"
 
 const uint8_t Font24Mono_Table[] =
     {
@@ -2513,7 +2513,7 @@ const uint8_t Font24Mono_Table[] =
         0x00, 0x00, 0x00, //
 };
 
-Font Font24Mono = {
+Shape Font24Mono = {
     Font24Mono_Table,
     17, /* Width */
     24, /* Height */
