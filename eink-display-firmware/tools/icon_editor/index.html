@@ -114,6 +114,34 @@
             width: 120px;
         }
 
+        input[type="range"] {
+            background: #3c3c3c;
+            border: 1px solid #3e3e42;
+            border-radius: 2px;
+            height: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #0e639c;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #0e639c;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
         button {
             background: #0e639c;
             border: none;
@@ -330,11 +358,22 @@
                 </div>
                 <button onclick="applyDimensions()">Apply</button>
                 <div class="toolbar">
-                    <div class="color-preview black active" onclick="setDrawColor('black')" title="Black (Left Click)"></div>
-                    <div class="color-preview white" onclick="setDrawColor('white')" title="White (Right Click)"></div>
+                    <label for="brushSize">Brush:</label>
+                    <input type="range" id="brushSize" min="1" max="10" value="1" style="width: 80px;">
+                    <span id="brushSizeValue">1px</span>
                 </div>
                 <button class="secondary" onclick="clearCanvas()">Clear</button>
                 <button class="secondary" onclick="invertCanvas()">Invert</button>
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <input type="file" id="imageInput" accept="image/*" onchange="loadImage(event)" style="display: none;">
+                    <button onclick="document.getElementById('imageInput').click()">Load Image</button>
+                    <button class="secondary" onclick="reconvertImage()" id="reconvertBtn" style="display: none;">Re-convert</button>
+                    <label for="threshold">Threshold:</label>
+                    <input type="range" id="threshold" min="0" max="255" value="128" style="width: 100px;">
+                    <span id="thresholdValue">128</span>
+                </div>
             </div>
 
             <div class="canvas-wrapper">
@@ -390,7 +429,7 @@
         let basePixelSize = 20;
         let pixelSize = 20;
         let gridSize = 1;
-        let currentColor = 'black';
+        let brushSize = 1;
         let isDrawing = false;
         let zoomLevel = 1.0;
 
@@ -575,17 +614,24 @@
         }
 
         function setPixel(x, y, color) {
-            if (x >= 0 && x < iconWidth && y >= 0 && y < iconHeight) {
-                pixels[y][x] = (color === 'black');
-                redrawCanvas();
-                generateCode();
-            }
-        }
+            const isBlack = (color === 'black');
 
-        function setDrawColor(color) {
-            currentColor = color;
-            document.querySelectorAll('.color-preview').forEach(el => el.classList.remove('active'));
-            document.querySelector(`.color-preview.${color}`).classList.add('active');
+            // Draw a circle of pixels based on brush size
+            for (let dy = -brushSize + 1; dy < brushSize; dy++) {
+                for (let dx = -brushSize + 1; dx < brushSize; dx++) {
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < brushSize) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        if (px >= 0 && px < iconWidth && py >= 0 && py < iconHeight) {
+                            pixels[py][px] = isBlack;
+                        }
+                    }
+                }
+            }
+
+            redrawCanvas();
+            generateCode();
         }
 
         canvas.addEventListener('mousedown', (e) => {
@@ -593,7 +639,7 @@
             isDrawing = true;
             const coords = getPixelCoords(e);
             if (coords) {
-                const drawColor = e.button === 2 ? 'white' : currentColor;
+                const drawColor = e.button === 2 ? 'white' : 'black';
                 setPixel(coords.x, coords.y, drawColor);
             }
         });
@@ -602,7 +648,7 @@
             if (isDrawing) {
                 const coords = getPixelCoords(e);
                 if (coords) {
-                    const drawColor = e.buttons === 2 ? 'white' : currentColor;
+                    const drawColor = e.buttons === 2 ? 'white' : 'black';
                     setPixel(coords.x, coords.y, drawColor);
                 }
             }
@@ -754,6 +800,126 @@
 
         // Update code when icon name changes
         iconNameInput.addEventListener('input', generateCode);
+
+        // Brush size functionality
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+
+        brushSizeInput.addEventListener('input', function() {
+            brushSize = parseInt(this.value);
+            brushSizeValue.textContent = brushSize + 'px';
+        });
+
+        // Image loading functionality
+        let loadedImage = null;
+        const thresholdInput = document.getElementById('threshold');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const reconvertBtn = document.getElementById('reconvertBtn');
+
+        thresholdInput.addEventListener('input', function() {
+            thresholdValue.textContent = this.value;
+            if (loadedImage) {
+                convertImageToPixels(loadedImage, parseInt(this.value));
+            }
+        });
+
+        function loadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    loadedImage = img;
+                    reconvertBtn.style.display = 'inline-block';
+
+                    // Update canvas dimensions to match image (with max constraints)
+                    const maxSize = 200;
+                    let newWidth = img.width;
+                    let newHeight = img.height;
+
+                    if (newWidth > maxSize || newHeight > maxSize) {
+                        const scale = Math.min(maxSize / newWidth, maxSize / newHeight);
+                        newWidth = Math.round(newWidth * scale);
+                        newHeight = Math.round(newHeight * scale);
+                    }
+
+                    widthInput.value = newWidth;
+                    heightInput.value = newHeight;
+                    iconWidth = newWidth;
+                    iconHeight = newHeight;
+
+                    // Convert and apply
+                    const threshold = parseInt(thresholdInput.value);
+                    convertImageToPixels(img, threshold);
+
+                    // Reset zoom to fit
+                    setTimeout(zoomFit, 100);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function reconvertImage() {
+            if (!loadedImage) return;
+
+            // Get current dimensions from inputs
+            iconWidth = parseInt(widthInput.value);
+            iconHeight = parseInt(heightInput.value);
+
+            // Re-convert with new dimensions
+            const threshold = parseInt(thresholdInput.value);
+            convertImageToPixels(loadedImage, threshold);
+
+            // Reset zoom to fit
+            setTimeout(zoomFit, 100);
+        }
+
+        function convertImageToPixels(img, threshold) {
+            // Create temporary canvas for image processing
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = iconWidth;
+            tempCanvas.height = iconHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw scaled image
+            tempCtx.drawImage(img, 0, 0, iconWidth, iconHeight);
+
+            // Get image data
+            const imageData = tempCtx.getImageData(0, 0, iconWidth, iconHeight);
+            const data = imageData.data;
+
+            // Convert to black and white based on threshold
+            pixels = Array(iconHeight).fill(null).map(() => Array(iconWidth).fill(false));
+
+            for (let y = 0; y < iconHeight; y++) {
+                for (let x = 0; x < iconWidth; x++) {
+                    const idx = (y * iconWidth + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    const a = data[idx + 3];
+
+                    // Calculate luminance (perceived brightness)
+                    // Use standard formula: 0.299*R + 0.587*G + 0.114*B
+                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                    // If alpha is low (transparent), treat as white
+                    if (a < 128) {
+                        pixels[y][x] = false; // white
+                    } else {
+                        // Convert based on threshold
+                        pixels[y][x] = luminance < threshold;
+                    }
+                }
+            }
+
+            updateCanvasSize();
+            redrawCanvas();
+            generateCode();
+        }
 
         // Auto-fit on window resize
         window.addEventListener('resize', () => {
