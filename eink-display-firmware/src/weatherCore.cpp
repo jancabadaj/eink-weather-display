@@ -75,23 +75,16 @@ void WeatherCore::reloadData()
         _serverClock->syncTime(refreshAttemptMillis, _weatherData.retrieval_timestamp);
 
         // Calculate data update interval if we have previous data
+        unsigned long intervalMs = 0;
         if (_hasInitialData && previousDataTimestamp.count() > 0)
         {
             auto timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(
                 _weatherData.data_timestamp - previousDataTimestamp);
 
-            if (timeDiff.count() > 0)
-            {
-                unsigned long intervalMs = timeDiff.count();
-                handleRefreshSuccess(intervalMs);
-            }
-        }
-        else
-        {
-            // First data fetch
-            handleRefreshSuccess(0);
+            intervalMs = (timeDiff.count() > 0) ? timeDiff.count() : 0;
         }
 
+        handleRefreshSuccess(0);
         _hasInitialData = true;
     }
     else
@@ -151,11 +144,7 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
 void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
 {
     _consecutiveFailures = 0;
-
-    if (intervalMs > 0)
-    {
-        _scheduler->addIntervalSample(intervalMs);
-    }
+    _scheduler->addIntervalSample(intervalMs);
 
     // Schedule next refresh
     bool scheduled = _scheduler->scheduleNextRefresh(_weatherData.data_timestamp.count());
