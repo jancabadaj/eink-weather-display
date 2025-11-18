@@ -4,6 +4,8 @@
 #include "draw/fonts/font24.h"
 #include "draw/shapes/pressure.h"
 #include "draw/shapes/noise.h"
+#include "draw/shapes/nightSky.h"
+#include "draw/shapes/networkError.h"
 #include "draw/components/temperatureComponent.hpp"
 #include "draw/components/humidityComponent.hpp"
 #include "draw/components/co2Component.hpp"
@@ -67,18 +69,14 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
 
 void WeatherRenderer::renderNightModeIndicator()
 {
-    Shape &font = Font24Mono;
-
     DrawUtils::clearImage(_imageData);
-
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 - 100, IMAGE_HEIGHT - 80, "Dobru noc", &font, Black);
+    DrawUtils::drawShape(_imageData, 0, 0, &NightSky, Black);
 }
 
 void WeatherRenderer::renderNetworkError()
 {
-    Shape &font = Font24Mono;
-
     DrawUtils::clearImage(_imageData);
-
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 - 150, IMAGE_HEIGHT - 80, "Chyba", &font, Black);
+    DrawUtils::drawShape(_imageData, IMAGE_WIDTH / 2 - NetworkError.width / 2,
+                         IMAGE_HEIGHT / 2 - NetworkError.height / 2,
+                         &NetworkError, Black);
 }
