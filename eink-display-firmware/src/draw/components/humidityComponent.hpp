@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include "../drawUtils.h"
-#include "../fonts/font58-mono.h"
+#include "../fonts/font58-prop.h"
 #include "../shapes/humidityEmpty.h"
 #include "../shapes/humidityFull.h"
 
@@ -20,13 +20,12 @@ public:
         humidityPercentage = std::clamp(humidityPercentage, 0, 100);
 
         char tempStr[32];
-
-        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
+        ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
+        snprintf(tempStr, sizeof(tempStr), "%d%%", humidityPercentage);
+        DrawUtils::drawStringProp(_imageData, _startX + 65, _startY + 12, tempStr, &font, Black);
 
         // Draw empty icon first
-        DrawUtils::drawIcon(_imageData, _startX, _startY, &HumidityEmptyIcon, Black);
-        snprintf(tempStr, sizeof(tempStr), "%d%%", humidityPercentage);
-        DrawUtils::drawString(_imageData, _startX + 65, _startY + 12, tempStr, &font, Black);
+        DrawUtils::drawShape(_imageData, _startX, _startY, &HumidityEmptyIcon, Black);
 
         // Partially overlay with full icon based on humidity percentage
         // Scale humidity: Too low or too high is outside of filled area (droplet shape)
@@ -40,7 +39,7 @@ public:
         partialHumidityIcon.height = overlayHeight;
         // skip bytes from the top of the bitmap based on remaining height
         partialHumidityIcon.bitmap += (HumidityFullIcon.width / 8 + (HumidityFullIcon.width % 8 ? 1 : 0)) * (HumidityFullIcon.height - overlayHeight);
-        DrawUtils::drawIcon(_imageData, _startX, _startY + (HumidityFullIcon.height - overlayHeight), &partialHumidityIcon, Black);
+        DrawUtils::drawShape(_imageData, _startX, _startY + (HumidityFullIcon.height - overlayHeight), &partialHumidityIcon, Black);
     }
 
 private:

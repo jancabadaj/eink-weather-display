@@ -5747,5 +5747,5 @@ ProportionalFont Font58_Roboto_BoldCondensed_Proportional = {
     Font58_Roboto_BoldCondensed_Offsets,
     40, /* Max width */
     58, /* Height */
-    32, /* First char */
+    ' ', /* First char */
 };

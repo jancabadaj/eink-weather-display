@@ -24,5 +24,5 @@ public:
     static uint16_t drawCharProp(uint8_t *imageData, uint16_t x, uint16_t y, char c, const ProportionalFont *font, Color color);
     static uint16_t getStringWidthProp(const char *str, const ProportionalFont *font);
 
-    static void drawIcon(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *icon, Color color);
+    static uint16_t drawShape(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *shape, Color color);
 };

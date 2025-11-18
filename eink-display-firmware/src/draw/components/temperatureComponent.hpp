@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "../drawUtils.h"
-#include "../fonts/font58-mono.h"
+#include "../fonts/font58-prop.h"
 #include "../shapes/degree.h"
 #include "../shapes/temperature.h"
 
@@ -16,15 +16,15 @@ public:
 
     void render(float temperatureCelsius)
     {
+        DrawUtils::drawShape(_imageData, _startX, _startY, &TemperatureIcon, Black);
+
         char tempStr[32];
-
-        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
-
-        DrawUtils::drawIcon(_imageData, _startX, _startY, &TemperatureIcon, Black);
+        ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
+        uint16_t currentX = _startX + 55;
         snprintf(tempStr, sizeof(tempStr), "%.1f", temperatureCelsius);
-        DrawUtils::drawString(_imageData, _startX + 55, _startY + 10, tempStr, &font, Black);
-        DrawUtils::drawIcon(_imageData, _startX + 235, _startY + 10, &DegreeIcon, Black);
-        DrawUtils::drawChar(_imageData, _startX + 250, _startY + 10, 'C', &font, Black);
+        currentX += DrawUtils::drawStringProp(_imageData, currentX, _startY + 10, tempStr, &font, Black) + 10;
+        currentX += DrawUtils::drawShape(_imageData, currentX, _startY + 14, &DegreeIcon, Black);
+        DrawUtils::drawCharProp(_imageData, currentX, _startY + 10, 'C', &font, Black);
     }
 
 private:

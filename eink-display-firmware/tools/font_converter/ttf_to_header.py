@@ -4,6 +4,10 @@
 TTF to C Header Font Converter
 Converts TrueType fonts to C header files for the e-ink display project.
 Supports both monospace and proportional fonts.
+
+Example usage:
+    python ttf_to_header.py -o out.h ~/Downloads/Roboto-BoldCondensed.ttf 58
+    python ttf_to_header.py -o out.h ~/Downloads/Roboto-BoldCondensed.ttf 58 --monospace
 """
 
 import argparse

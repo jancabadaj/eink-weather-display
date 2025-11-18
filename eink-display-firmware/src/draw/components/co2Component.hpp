@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include "../drawUtils.h"
-#include "../fonts/font58-mono.h"
+#include "../fonts/font58-prop.h"
 #include "../shapes/co2.h"
 #include "../shapes/scaleEmpty.h"
 #include "../shapes/scaleFull.h"
@@ -19,15 +19,13 @@ public:
     void render(int co2Ppm)
     {
         char tempStr[32];
-
-        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
-
-        DrawUtils::drawIcon(_imageData, _startX, _startY, &CO2Icon, Black);
+        ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
         snprintf(tempStr, sizeof(tempStr), "%d", co2Ppm);
-        DrawUtils::drawString(_imageData, _startX + 150, _startY + 10, tempStr, &font, Black);
+        DrawUtils::drawStringProp(_imageData, _startX + 150, _startY + 10, tempStr, &font, Black);
 
         // Draw empty scale first
-        DrawUtils::drawIcon(_imageData, _startX, _startY - 5, &ScaleEmptyIcon, Black);
+        DrawUtils::drawShape(_imageData, _startX, _startY, &CO2Icon, Black);
+        DrawUtils::drawShape(_imageData, _startX, _startY - 5, &ScaleEmptyIcon, Black);
 
         // Partially overlay with full scale based on CO2 ppm
 
@@ -72,7 +70,7 @@ public:
             }
         }
         partialScaleIcon.bitmap = partialBitmap;
-        DrawUtils::drawIcon(_imageData, _startX, _startY - 5, &partialScaleIcon, Black);
+        DrawUtils::drawShape(_imageData, _startX, _startY - 5, &partialScaleIcon, Black);
     }
 
 private:

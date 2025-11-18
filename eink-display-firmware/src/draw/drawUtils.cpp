@@ -10,6 +10,44 @@
     *(const unsigned short *)(_addr); \
 })
 
+// Internal helper template for string drawing
+// GetWidthFunc: function that takes (char c) and returns uint16_t width
+// DrawCharFunc: function that takes (uint16_t x, uint16_t y, char c)
+template <typename FontType, typename GetWidthFunc, typename DrawCharFunc>
+static uint16_t drawStringHelper(uint8_t *imageData, uint16_t xStart, uint16_t y, const char *str,
+                                 const FontType *font, Color color, uint16_t fontHeight,
+                                 GetWidthFunc getWidth, DrawCharFunc drawCharFunc)
+{
+    if (xStart > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    {
+        return 0; // Starting point out of bounds
+    }
+
+    if ((y + fontHeight) > IMAGE_HEIGHT)
+    {
+        return 0; // Height exceeds image bounds
+    }
+
+    uint16_t xCurrent = xStart;
+
+    while (*str != '\0')
+    {
+        uint16_t charWidth = getWidth(*str);
+
+        if ((xCurrent + charWidth) > IMAGE_WIDTH)
+        {
+            return xCurrent - xStart; // String exceeds image width
+        }
+
+        drawCharFunc(xCurrent, y, *str);
+
+        xCurrent += charWidth;
+        str++;
+    }
+
+    return (xCurrent - xStart);
+}
+
 void DrawUtils::clearImage(uint8_t *imageData)
 {
     for (uint16_t y = 0; y < IMAGE_HEIGHT_BYTE; y++)
@@ -96,24 +134,23 @@ void DrawUtils::drawRectangle(uint8_t *imageData, uint16_t xStart, uint16_t xEnd
     }
 }
 
-void DrawUtils::drawIcon(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *icon, Color color)
+uint16_t DrawUtils::drawShape(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *shape, Color color)
 {
     if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
     {
-        return;
+        return 0; // Starting point out of bounds
     }
 
-    if ((x + icon->width) > IMAGE_WIDTH || (y + icon->height) > IMAGE_HEIGHT)
+    if ((x + shape->width) > IMAGE_WIDTH || (y + shape->height) > IMAGE_HEIGHT)
     {
-        return; // Icon exceeds image bounds
+        return 0; // Exceeds image bounds
     }
 
-    const unsigned char *ptr = icon->bitmap;
+    const unsigned char *ptr = shape->bitmap;
 
-    uint16_t row, col;
-    for (row = 0; row < icon->height; row++)
+    for (uint16_t row = 0; row < shape->height; row++)
     {
-        for (col = 0; col < icon->width; col++)
+        for (uint16_t col = 0; col < shape->width; col++)
         {
             if (*ptr & (0x80 >> (col % 8)))
                 setPixel(imageData, x + col, y + row, color);
@@ -122,139 +159,56 @@ void DrawUtils::drawIcon(uint8_t *imageData, uint16_t x, uint16_t y, const Shape
                 ptr++;
         }
 
-        if (icon->width % 8 != 0)
+        if (shape->width % 8 != 0)
             ptr++;
     }
+
+    return shape->width;
 }
 
 uint16_t DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const Shape *font, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    auto getWidth = [&](char c) -> uint16_t
+    { return font->width; };
+    auto drawCharFunc = [&](uint16_t cx, uint16_t cy, char c)
     {
-        return 0;
-    }
+        drawChar(imageData, cx, cy, c, font, color);
+    };
 
-    if ((y + font->height) > IMAGE_HEIGHT)
-    {
-        return 0; // String exceeds image height
-    }
-
-    uint16_t xx = x;
-
-    while (*str != '\0')
-    {
-        if ((xx + font->width) > IMAGE_WIDTH)
-        {
-            return xx - x; // String exceeds image width
-        }
-
-        drawChar(imageData, xx, y, *str, font, color);
-
-        // The next character of the address
-        xx += font->width;
-        str++;
-    }
-
-    return (xx - x);
+    return drawStringHelper(imageData, x, y, str, font, color, font->height, getWidth, drawCharFunc);
 }
 
 uint16_t DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char c, const Shape *font, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
-    {
-        return 0;
-    }
-
     uint32_t charOffset = (c - ' ') * font->height * (font->width / 8 + (font->width % 8 ? 1 : 0));
-    const unsigned char *ptr = &font->bitmap[charOffset];
 
-    uint16_t row, col;
-    for (row = 0; row < font->height; row++)
-    {
-        for (col = 0; col < font->width; col++)
-        {
-            if (*ptr & (0x80 >> (col % 8)))
-                setPixel(imageData, x + col, y + row, color);
-
-            if (col % 8 == 7)
-                ptr++;
-        }
-
-        if (font->width % 8 != 0)
-            ptr++;
-    }
-
-    return font->width;
+    Shape charShape{&font->bitmap[charOffset], font->width, font->height};
+    return drawShape(imageData, x, y, &charShape, color);
 }
 
 uint16_t DrawUtils::drawStringProp(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const ProportionalFont *font, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    auto getWidth = [&](char c) -> uint16_t
     {
-        return 0;
-    }
-
-    if ((y + font->height) > IMAGE_HEIGHT)
+        uint8_t charIndex = c - font->firstChar;
+        return font->widths[charIndex];
+    };
+    auto drawCharFunc = [&](uint16_t cx, uint16_t cy, char c)
     {
-        return 0; // String exceeds image height
-    }
+        drawCharProp(imageData, cx, cy, c, font, color);
+    };
 
-    uint16_t xx = x;
-
-    while (*str != '\0')
-    {
-        // Get character width
-        uint8_t charIndex = *str - font->firstChar;
-        uint16_t charWidth = font->widths[charIndex];
-
-        if ((xx + charWidth) > IMAGE_WIDTH)
-        {
-            return xx - x; // String exceeds image width
-        }
-
-        drawCharProp(imageData, xx, y, *str, font, color);
-
-        // Advance by character width
-        xx += charWidth;
-        str++;
-    }
-
-    return (xx - x);
+    return drawStringHelper(imageData, x, y, str, font, color, font->height, getWidth, drawCharFunc);
 }
 
 uint16_t DrawUtils::drawCharProp(uint8_t *imageData, uint16_t x, uint16_t y, char c, const ProportionalFont *font, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
-    {
-        return 0;
-    }
-
-    // Calculate character index
     uint8_t charIndex = c - font->firstChar;
-
-    // Get character width and offset
     uint16_t charWidth = font->widths[charIndex];
     uint32_t charOffset = font->offsets[charIndex];
 
-    const unsigned char *ptr = &font->bitmap[charOffset];
-
-    uint16_t row, col;
-    for (row = 0; row < font->height; row++)
-    {
-        for (col = 0; col < charWidth; col++)
-        {
-            if (*ptr & (0x80 >> (col % 8)))
-                setPixel(imageData, x + col, y + row, color);
-
-            if (col % 8 == 7)
-                ptr++;
-        }
-
-        if (charWidth % 8 != 0)
-            ptr++;
-    }
-
-    return charWidth;
+    Shape charShape{&font->bitmap[charOffset], charWidth, font->height};
+    return drawShape(imageData, x, y, &charShape, color);
 }
 
 uint16_t DrawUtils::getStringWidthProp(const char *str, const ProportionalFont *font)

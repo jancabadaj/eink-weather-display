@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
                 .pressure = 1013.25,
                 .noise = 30,
                 .co2 = 520},
-            .external = {.temperature = 20.1, .humidity = 60},
+            .external = {.temperature = -20.1, .humidity = 60},
             .data_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()),
             .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())});
     }

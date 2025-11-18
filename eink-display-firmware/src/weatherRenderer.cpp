@@ -32,13 +32,13 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
     humComp.render(data.internal.humidity);
 
     // Pressure
-    DrawUtils::drawIcon(_imageData, 30, 315, &PressureIcon, Black);
+    DrawUtils::drawShape(_imageData, 30, 315, &PressureIcon, Black);
     DrawUtils::drawString(_imageData, 60, 320, "Tlak   : ", &font24, Black);
     snprintf(tempStr, sizeof(tempStr), "%.1f mbar", data.internal.pressure);
     DrawUtils::drawString(_imageData, 210, 320, tempStr, &font24, Black);
 
     // Noise
-    DrawUtils::drawIcon(_imageData, 30, 345, &NoiseIcon, Black);
+    DrawUtils::drawShape(_imageData, 30, 345, &NoiseIcon, Black);
     DrawUtils::drawString(_imageData, 60, 350, "Hluk   : ", &font24, Black);
     snprintf(tempStr, sizeof(tempStr), "%d dB", data.internal.noise);
     DrawUtils::drawString(_imageData, 210, 350, tempStr, &font24, Black);
