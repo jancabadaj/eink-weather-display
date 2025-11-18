@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "../drawUtils.h"
-#include "../font58.h"
+#include "../fonts/font58-mono.h"
 #include "../shapes/degree.h"
 #include "../shapes/temperature.h"
 
@@ -18,7 +18,7 @@ public:
     {
         char tempStr[32];
 
-        Shape &font = Font58_Roboto_BoldCondensed;
+        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
 
         DrawUtils::drawIcon(_imageData, _startX, _startY, &TemperatureIcon, Black);
         snprintf(tempStr, sizeof(tempStr), "%.1f", temperatureCelsius);

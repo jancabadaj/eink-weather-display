@@ -84,7 +84,7 @@ void WeatherCore::reloadData()
             intervalMs = (timeDiff.count() > 0) ? timeDiff.count() : 0;
         }
 
-        handleRefreshSuccess(0);
+        handleRefreshSuccess(intervalMs);
         _hasInitialData = true;
     }
     else

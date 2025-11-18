@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include "../drawUtils.h"
-#include "../font58.h"
+#include "../fonts/font58-mono.h"
 #include "../shapes/humidityEmpty.h"
 #include "../shapes/humidityFull.h"
 
@@ -21,7 +21,7 @@ public:
 
         char tempStr[32];
 
-        Shape &font = Font58_Roboto_BoldCondensed;
+        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
 
         // Draw empty icon first
         DrawUtils::drawIcon(_imageData, _startX, _startY, &HumidityEmptyIcon, Black);

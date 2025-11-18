@@ -38,7 +38,7 @@
 #pragma once
 
 /* Includes ------------------------------------------------------------------*/
-#include "shape.h"
+#include "../shape.h"
 
 const uint8_t Font24Mono_Table[] =
     {

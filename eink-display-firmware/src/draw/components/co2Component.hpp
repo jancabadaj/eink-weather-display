@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include "../drawUtils.h"
-#include "../font58.h"
+#include "../fonts/font58-mono.h"
 #include "../shapes/co2.h"
 #include "../shapes/scaleEmpty.h"
 #include "../shapes/scaleFull.h"
@@ -20,7 +20,7 @@ public:
     {
         char tempStr[32];
 
-        Shape &font = Font58_Roboto_BoldCondensed;
+        Shape &font = Font58_Roboto_BoldCondensed_Monospace;
 
         DrawUtils::drawIcon(_imageData, _startX, _startY, &CO2Icon, Black);
         snprintf(tempStr, sizeof(tempStr), "%d", co2Ppm);

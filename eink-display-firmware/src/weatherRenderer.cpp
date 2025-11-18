@@ -1,8 +1,7 @@
 #include "definitions.h"
 #include "weatherRenderer.h"
 #include "draw/drawUtils.h"
-#include "draw/font24.h"
-#include "draw/font58.h"
+#include "draw/fonts/font24.h"
 #include "draw/shapes/pressure.h"
 #include "draw/shapes/noise.h"
 #include "draw/components/temperatureComponent.hpp"
@@ -12,7 +11,6 @@
 void WeatherRenderer::renderWeather(const WeatherData &data)
 {
     Shape &font24 = Font24Mono;
-    Shape &font = Font58_Roboto_BoldCondensed;
 
     DrawUtils::clearImage(_imageData);
 
