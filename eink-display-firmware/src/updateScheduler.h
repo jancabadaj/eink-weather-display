@@ -8,24 +8,15 @@
 
 namespace UpdateSchedule
 {
-    // ============= CONFIGURABLE UPDATE SCHEDULE
     // Define night hours (hour >= NIGHT_START_HOUR OR hour < NIGHT_END_HOUR is night)
     constexpr int NIGHT_START_HOUR_UTC = 21;
     constexpr int NIGHT_END_HOUR_UTC = 6;
 
-    // ============= ADAPTIVE LEARNING PARAMETERS
-    // Number of interval samples to track for calculating median
-    constexpr size_t INTERVAL_SAMPLE_SIZE = 7;
-    // Valid interval range (ignore samples outside this range as anomalies)
-    constexpr unsigned long MIN_VALID_INTERVAL_MS = 5 * 60 * 1000;       // 5 minutes
-    constexpr unsigned long MAX_VALID_INTERVAL_MS = 20 * 60 * 1000;      // 20 minutes
-    constexpr unsigned long DEFAULT_UPDATE_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes - used if not learned yet
-    // Refresh after predicted update time plus offset
-    constexpr unsigned long ADAPTIVE_UPDATE_OFFSET_MS = 30 * 1000; // 30 seconds after predicted update
-
-    // ============= RETRY AND ERROR HANDLING
-    // Minimum interval between refresh attempts (prevent rapid retries on errors)
-    constexpr unsigned long MIN_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
+    // Netatmo is refreshing data in documented intervals
+    constexpr unsigned long REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+    constexpr unsigned long INTERVAL_OFFSET_MS = 30 * 1000;         // 30 seconds offset to avoid fetching too early
+    // Minimum interval to prevent rapid retries on errors, or too frequent updates if data was not updated for some reason
+    constexpr unsigned long MIN_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
     // Maximum consecutive failures before stopping updates and clearing display
     constexpr int MAX_CONSECUTIVE_FAILURES = 3;
 
@@ -37,21 +28,20 @@ public:
     UpdateScheduler(std::shared_ptr<ServerClock> serverClock)
         : _serverClock(serverClock) {}
 
-    void addIntervalSample(unsigned long intervalMs);
-    // Schedule next refresh based on data timestamp. Return false if night time.
-    bool scheduleNextRefresh(unsigned long long dataUtcTimestampMs);
+    // Schedule next refresh on data timestamp + refresh interval. Return false if night time.
+    bool scheduleNormalRefresh(unsigned long long dataUtcTimestampMs);
 
-    unsigned long getNextScheduledRefreshMillis() const { return _nextScheduledRefreshMillis; }
-    void setNextScheduledRefreshMillis(unsigned long nextRefreshMillis) { _nextScheduledRefreshMillis = nextRefreshMillis; }
+    // In case of failure, schedule a retry after minimum interval. Return false if too many failures.
+    bool scheduleRetryRefresh();
+
+    unsigned long getNextScheduledRefreshMillis() const { return _nextRefreshMillis; }
 
 private:
-    unsigned long getMedianInterval() const;
     static int getCurrentHour(unsigned long long currentUtcTimestampMs);
     static bool isNightTime(int hour);
+    void setNextRefresh(unsigned long delayMs);
 
     std::shared_ptr<ServerClock> _serverClock;
-    std::array<unsigned long, UpdateSchedule::INTERVAL_SAMPLE_SIZE> _intervalSamples = {0};
-    size_t _sampleCount = 0;
-    size_t _sampleIndex = 0;
-    unsigned long _nextScheduledRefreshMillis = 0;
+    unsigned long _nextRefreshMillis = 0;
+    int _consecutiveRetries = 0;
 };

@@ -30,7 +30,8 @@ bool Auth::login(const String &code)
 bool Auth::refreshTokenIfNeeded()
 {
     // Refresh if logged in and token expires within 60 seconds
-    if (_loggedIn && (millis() + 60000) > _tokenExpirationTimeMs)
+    // Use subtraction with signed cast to avoid millis() overflow at ULONG_MAX (~49.7 days)
+    if (_loggedIn && (long)(_tokenExpirationTimeMs - millis()) <= 60000)
     {
         logger.info("[Auth] Refreshing token (expiration at %lu, current time %lu)", _tokenExpirationTimeMs, millis());
 

@@ -36,7 +36,6 @@ void WeatherCore::restartUpdateLoop()
     if (_updateLoopStopped)
     {
         logger.info("[WeatherCore] Restarting update loop");
-        _consecutiveFailures = 0;
         _hasInitialData = false;
         _updateLoopStopped = false;
     }
@@ -59,32 +58,18 @@ void WeatherCore::reloadData()
     http.addHeader("Authorization", "Bearer " + _auth->getAccessToken());
 
     // Send HTTP GET request
-    unsigned long refreshAttemptMillis = millis();
+    unsigned long requestStartMillis = millis();
     int httpResponseCode = http.GET();
     if (httpResponseCode > 0)
     {
         logger.info("[WeatherCore] HTTP Response code: %d", httpResponseCode);
         String payload = http.getString();
 
-        // Store previous data timestamp for interval calculation
-        auto previousDataTimestamp = _weatherData.data_timestamp;
-
         parseAndUpdateWeatherData(payload);
 
-        // Sync clock with server time
-        _serverClock->syncTime(refreshAttemptMillis, _weatherData.retrieval_timestamp);
+        _serverClock->syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
 
-        // Calculate data update interval if we have previous data
-        unsigned long intervalMs = 0;
-        if (_hasInitialData && previousDataTimestamp.count() > 0)
-        {
-            auto timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(
-                _weatherData.data_timestamp - previousDataTimestamp);
-
-            intervalMs = (timeDiff.count() > 0) ? timeDiff.count() : 0;
-        }
-
-        handleRefreshSuccess(intervalMs);
+        handleRefreshSuccess();
         _hasInitialData = true;
     }
     else
@@ -128,10 +113,10 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
     external.humidity = externalDash["Humidity"] | 0;
 
     // Timestamp (use internal time_utc)
-    long data_utc = internalDash["time_utc"] | 0;
+    unsigned long long data_utc = internalDash["time_utc"] | 0;
     std::chrono::system_clock::time_point data_timestamp = std::chrono::system_clock::from_time_t(data_utc);
 
-    long retrieval_utc = doc["time_server"] | 0;
+    unsigned long long retrieval_utc = doc["time_server"] | 0;
     std::chrono::system_clock::time_point retrieval_timestamp = std::chrono::system_clock::from_time_t(retrieval_utc);
 
     _weatherData = {
@@ -141,13 +126,10 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
         .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(retrieval_timestamp.time_since_epoch())};
 }
 
-void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
+void WeatherCore::handleRefreshSuccess()
 {
-    _consecutiveFailures = 0;
-    _scheduler->addIntervalSample(intervalMs);
-
     // Schedule next refresh
-    bool scheduled = _scheduler->scheduleNextRefresh(_weatherData.data_timestamp.count());
+    bool scheduled = _scheduler->scheduleNormalRefresh(_weatherData.data_timestamp.count());
     if (!scheduled)
     {
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
@@ -169,22 +151,11 @@ void WeatherCore::handleRefreshSuccess(unsigned long intervalMs)
 
 void WeatherCore::handleRefreshFailure()
 {
-    _consecutiveFailures++;
-
-    logger.warning("[WeatherCore] Consecutive failures: %d/%d",
-                   _consecutiveFailures, UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
-
-    if (_consecutiveFailures >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
+    bool scheduled = _scheduler->scheduleRetryRefresh();
+    if (!scheduled)
     {
-        logger.error("[WeatherCore] Max failures reached! Clearing display and stopping updates.");
+        logger.error("[WeatherCore] Retry not scheduled! Clearing display and stopping updates.");
         _displayManager->clearDisplay();
         _updateLoopStopped = true;
-    }
-    else
-    {
-        // Schedule retry with minimum interval
-        unsigned long retryDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
-        _scheduler->setNextScheduledRefreshMillis(millis() + retryDelay);
-        logger.info("[WeatherCore] Retry scheduled in %lu seconds", retryDelay / 1000);
     }
 }

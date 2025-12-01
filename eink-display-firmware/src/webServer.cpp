@@ -1,12 +1,10 @@
-#include "webServer.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
 #include "config.h"
-#include "DEV_Config.h"
-#include "EPD.h"
+#include "webServer.h"
 
 // API data - TODO: Move to somewhere else?
 String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string

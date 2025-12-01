@@ -3,130 +3,90 @@
 #include "updateScheduler.h"
 #include "logger.h"
 
-void UpdateScheduler::addIntervalSample(unsigned long intervalMs)
+bool UpdateScheduler::scheduleNormalRefresh(unsigned long long dataUtcTimestampMs)
 {
-    if (intervalMs < UpdateSchedule::MIN_VALID_INTERVAL_MS ||
-        intervalMs > UpdateSchedule::MAX_VALID_INTERVAL_MS)
-    {
-        logger.warning("[UpdateScheduler] Ignoring invalid sample: %lus (expected %lu-%lus)",
-                       intervalMs / 1000,
-                       UpdateSchedule::MIN_VALID_INTERVAL_MS / 1000,
-                       UpdateSchedule::MAX_VALID_INTERVAL_MS / 1000);
-        return;
-    }
+    _consecutiveRetries = 0;
 
-    _intervalSamples[_sampleIndex] = intervalMs;
-    _sampleIndex = (_sampleIndex + 1) % UpdateSchedule::INTERVAL_SAMPLE_SIZE;
-
-    if (_sampleCount < UpdateSchedule::INTERVAL_SAMPLE_SIZE)
-    {
-        _sampleCount++;
-    }
-
-    logger.debug("[UpdateScheduler] Sample added: %lus (%u/%u)",
-                 intervalMs / 1000,
-                 _sampleCount,
-                 UpdateSchedule::INTERVAL_SAMPLE_SIZE);
-}
-
-unsigned long UpdateScheduler::getMedianInterval() const
-{
-    if (_sampleCount == 0)
-    {
-        return 0;
-    }
-
-    std::array<unsigned long, UpdateSchedule::INTERVAL_SAMPLE_SIZE> sortedSamples;
-    for (size_t i = 0; i < _sampleCount; i++)
-    {
-        sortedSamples[i] = _intervalSamples[i];
-    }
-    std::sort(sortedSamples.begin(), sortedSamples.begin() + _sampleCount);
-
-    // Average middle values if even number, else take middle value
-    size_t medianIndex = _sampleCount / 2;
-    if (_sampleCount % 2 == 0 && _sampleCount > 1)
-    {
-        return (sortedSamples[medianIndex - 1] + sortedSamples[medianIndex]) / 2;
-    }
-    return sortedSamples[medianIndex];
-}
-
-bool UpdateScheduler::scheduleNextRefresh(unsigned long long dataUtcTimestampMs)
-{
     unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
-    logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %llu, Data timestamp: %llu",
-                currentUtcTimestampMs, dataUtcTimestampMs);
+    logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %llu, Data timestamp: %llu, Age: %llus",
+                currentUtcTimestampMs, dataUtcTimestampMs,
+                (currentUtcTimestampMs - dataUtcTimestampMs) / 1000);
     int currentHour = getCurrentHour(currentUtcTimestampMs);
     bool isNight = isNightTime(currentHour);
 
-    unsigned long nextRefreshDelay;
-
     if (isNight)
     {
-        // Calculate exact timestamp when night ends
+        // Calculate when night ends
+        // 1. Timestamp of current hour (0 minutes, 0 seconds)
         time_t currentTimeSec = currentUtcTimestampMs / 1000;
-        struct tm timeinfo;
-        gmtime_r(&currentTimeSec, &timeinfo);
+        time_t currentHourTimestamp = currentTimeSec - (currentTimeSec % 3600);
 
-        // Set to night end hour with 0 minutes and seconds
-        timeinfo.tm_hour = UpdateSchedule::NIGHT_END_HOUR_UTC;
-        timeinfo.tm_min = 0;
-        timeinfo.tm_sec = 0;
-
-        time_t nightEndTimestamp = mktime(&timeinfo);
-
-        // If night end is before current time, it's tomorrow
-        if (nightEndTimestamp <= currentTimeSec)
+        // 2. Calculate hours until night end
+        int hoursUntilNightEnd = UpdateSchedule::NIGHT_END_HOUR_UTC - currentHour;
+        if (hoursUntilNightEnd <= 0)
         {
-            timeinfo.tm_mday += 1;
-            nightEndTimestamp = mktime(&timeinfo);
+            hoursUntilNightEnd += 24; // Night end is tomorrow
         }
 
-        nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
+        // 3. Timestamp of night end hour (and 0 minutes, 0 seconds)
+        time_t nightEndTimestamp = currentHourTimestamp + (hoursUntilNightEnd * 3600);
 
+        unsigned long nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
+        setNextRefresh(nextRefreshDelay);
         logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
                     UpdateSchedule::NIGHT_END_HOUR_UTC,
                     currentHour,
                     nextRefreshDelay / 1000);
-        setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
         return false;
     }
     else
     {
-        unsigned long medianInterval = getMedianInterval();
+        unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + UpdateSchedule::REFRESH_INTERVAL_MS + UpdateSchedule::INTERVAL_OFFSET_MS;
 
-        if (medianInterval > 0)
+        unsigned long nextRefreshDelay;
+        if (expectedNextDataTimeMs <= currentUtcTimestampMs)
         {
-            unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + medianInterval + UpdateSchedule::ADAPTIVE_UPDATE_OFFSET_MS;
-            long delayFromNow = (long)(expectedNextDataTimeMs - currentUtcTimestampMs);
-
-            if (delayFromNow < (long)UpdateSchedule::MIN_REFRESH_INTERVAL_MS)
-            {
-                nextRefreshDelay = UpdateSchedule::MIN_REFRESH_INTERVAL_MS;
-            }
-            else
-            {
-                nextRefreshDelay = (unsigned long)delayFromNow;
-            }
-
-            logger.info("[UpdateScheduler] Adaptive schedule: %lus (median: %lus, n=%u, data age: %llus)",
-                        nextRefreshDelay / 1000,
-                        medianInterval / 1000,
-                        _sampleCount,
-                        (currentUtcTimestampMs - dataUtcTimestampMs) / 1000);
+            nextRefreshDelay = UpdateSchedule::MIN_INTERVAL_MS;
+            logger.warning("[UpdateScheduler] Data is stale, next refresh would be in the past. Scheduling minimum interval.");
         }
         else
         {
-            nextRefreshDelay = UpdateSchedule::DEFAULT_UPDATE_INTERVAL_MS;
-            logger.info("[UpdateScheduler] Default schedule: %lus (learning...)",
-                        nextRefreshDelay / 1000);
+            nextRefreshDelay = (unsigned long)(expectedNextDataTimeMs - currentUtcTimestampMs);
         }
-    }
 
-    logger.info("[UpdateScheduler] Next refresh in: %lus", nextRefreshDelay / 1000);
-    setNextScheduledRefreshMillis(millis() + nextRefreshDelay);
-    return true;
+        setNextRefresh(nextRefreshDelay);
+        return true;
+    }
+}
+
+bool UpdateScheduler::scheduleRetryRefresh()
+{
+    _consecutiveRetries++;
+
+    logger.warning("[UpdateScheduler] Retry schedule %d/%d",
+                   _consecutiveRetries, UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
+
+    if (_consecutiveRetries >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
+    {
+        logger.error("[UpdateScheduler] Max consecutive schedule retries reached!");
+        _nextRefreshMillis = ULONG_MAX;
+        return false;
+    }
+    else
+    {
+        setNextRefresh(UpdateSchedule::MIN_INTERVAL_MS);
+        return true;
+    }
+}
+
+void UpdateScheduler::setNextRefresh(unsigned long delayMs)
+{
+    if (delayMs < UpdateSchedule::MIN_INTERVAL_MS)
+    {
+        delayMs = UpdateSchedule::MIN_INTERVAL_MS;
+    }
+    _nextRefreshMillis = millis() + delayMs;
+    logger.info("[UpdateScheduler] Next refresh scheduled in %lu seconds", delayMs / 1000);
 }
 
 int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)

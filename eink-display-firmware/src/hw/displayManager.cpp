@@ -1,6 +1,9 @@
 #include "displayManager.h"
 
-#include "EPD.h"
+// TODO:
+//#include "EPD.h"
+#include "utility/EPD_7in5_V2.h"
+
 #include "GUI_Paint.h"
 #include "definitions.h"
 
