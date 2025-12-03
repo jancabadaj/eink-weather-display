@@ -33,10 +33,11 @@ private:
     std::shared_ptr<UpdateScheduler> _scheduler;
 
     void parseAndUpdateWeatherData(const String &payload);
-    void handleRefreshSuccess();
-    void handleRefreshFailure();
+    void updateDisplayAndSchedule();
 
     WeatherData _weatherData;
+    std::chrono::milliseconds _previousDataTimestamp{0};
     bool _hasInitialData = false;
     bool _updateLoopStopped = false;
+    int _consecutiveFailures = 0;
 };

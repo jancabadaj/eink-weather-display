@@ -69,14 +69,17 @@ void WeatherCore::reloadData()
 
         _serverClock->syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
 
-        handleRefreshSuccess();
+        _consecutiveFailures = 0;
         _hasInitialData = true;
     }
     else
     {
-        logger.error("[WeatherCore] HTTP error %d: %s", httpResponseCode, http.getString().c_str());
-        handleRefreshFailure();
+        logger.error("[WeatherCore] HTTP error (consecutive failures: %d/%d) %d: %s",
+                     _consecutiveFailures, UpdateSchedule::MAX_CONSECUTIVE_FAILURES, httpResponseCode, http.getString().c_str());
+        _consecutiveFailures++;
     }
+
+    updateDisplayAndSchedule();
 
     // Free resources
     http.end();
@@ -126,12 +129,24 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
         .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(retrieval_timestamp.time_since_epoch())};
 }
 
-void WeatherCore::handleRefreshSuccess()
+void WeatherCore::updateDisplayAndSchedule()
 {
+    if (_consecutiveFailures >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
+    {
+        logger.error("[WeatherCore] Max consecutive failures reached! Clearing display and stopping updates.");
+        _displayManager->clearDisplay();
+        _updateLoopStopped = true;
+        return;
+    }
+
     // Schedule next refresh
-    bool scheduled = _scheduler->scheduleNormalRefresh(_weatherData.data_timestamp.count());
+    bool scheduled = _scheduler->scheduleRefresh(_weatherData.data_timestamp.count());
+    bool dataChanged = (_weatherData.data_timestamp != _previousDataTimestamp);
+    _previousDataTimestamp = _weatherData.data_timestamp;
+
     if (!scheduled)
     {
+        // Night mode - always update display to show night mode indicator
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
         _renderer->renderNightModeIndicator();
         _displayManager->refreshDisplay();
@@ -139,6 +154,14 @@ void WeatherCore::handleRefreshSuccess()
     }
     else
     {
+        // Skip display update if data unchanged
+        if (!dataChanged)
+        {
+            logger.info("[WeatherCore] Data unchanged (timestamp: %lld), skipping display refresh",
+                        _weatherData.data_timestamp.count());
+            return;
+        }
+
         // Update display with new data
         logger.info("[WeatherCore] Updating display. [Data timestamp: %lld, Server time: %lld]",
                     _weatherData.data_timestamp.count(),
@@ -146,16 +169,5 @@ void WeatherCore::handleRefreshSuccess()
         _renderer->renderWeather(_weatherData);
         _displayManager->refreshDisplay();
         logger.info("[WeatherCore] Display updated");
-    }
-}
-
-void WeatherCore::handleRefreshFailure()
-{
-    bool scheduled = _scheduler->scheduleRetryRefresh();
-    if (!scheduled)
-    {
-        logger.error("[WeatherCore] Retry not scheduled! Clearing display and stopping updates.");
-        _displayManager->clearDisplay();
-        _updateLoopStopped = true;
     }
 }

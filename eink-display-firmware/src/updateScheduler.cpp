@@ -2,10 +2,10 @@
 #include <memory>
 #include "updateScheduler.h"
 #include "logger.h"
+#include "definitions.h"
 
-bool UpdateScheduler::scheduleNormalRefresh(unsigned long long dataUtcTimestampMs)
+bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 {
-    _consecutiveRetries = 0;
 
     unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
     logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %llu, Data timestamp: %llu, Age: %llus",
@@ -32,7 +32,7 @@ bool UpdateScheduler::scheduleNormalRefresh(unsigned long long dataUtcTimestampM
         time_t nightEndTimestamp = currentHourTimestamp + (hoursUntilNightEnd * 3600);
 
         unsigned long nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
-        setNextRefresh(nextRefreshDelay);
+        _nextRefreshMillis = millis() + nextRefreshDelay;
         logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
                     UpdateSchedule::NIGHT_END_HOUR_UTC,
                     currentHour,
@@ -44,49 +44,16 @@ bool UpdateScheduler::scheduleNormalRefresh(unsigned long long dataUtcTimestampM
         unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + UpdateSchedule::REFRESH_INTERVAL_MS + UpdateSchedule::INTERVAL_OFFSET_MS;
 
         unsigned long nextRefreshDelay;
-        if (expectedNextDataTimeMs <= currentUtcTimestampMs)
+        while (expectedNextDataTimeMs <= currentUtcTimestampMs) // Handle stale data - add as many intervals as needed to get next expected refresh time in the future
         {
-            nextRefreshDelay = UpdateSchedule::MIN_INTERVAL_MS;
-            logger.warning("[UpdateScheduler] Data is stale, next refresh would be in the past. Scheduling minimum interval.");
+            expectedNextDataTimeMs += UpdateSchedule::REFRESH_INTERVAL_MS;
         }
-        else
-        {
-            nextRefreshDelay = (unsigned long)(expectedNextDataTimeMs - currentUtcTimestampMs);
-        }
+        nextRefreshDelay = (unsigned long)(expectedNextDataTimeMs - currentUtcTimestampMs);
 
-        setNextRefresh(nextRefreshDelay);
+        _nextRefreshMillis = millis() + nextRefreshDelay;
+        logger.info("[UpdateScheduler] Next refresh scheduled in %lu seconds", nextRefreshDelay / 1000);
         return true;
     }
-}
-
-bool UpdateScheduler::scheduleRetryRefresh()
-{
-    _consecutiveRetries++;
-
-    logger.warning("[UpdateScheduler] Retry schedule %d/%d",
-                   _consecutiveRetries, UpdateSchedule::MAX_CONSECUTIVE_FAILURES);
-
-    if (_consecutiveRetries >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
-    {
-        logger.error("[UpdateScheduler] Max consecutive schedule retries reached!");
-        _nextRefreshMillis = ULONG_MAX;
-        return false;
-    }
-    else
-    {
-        setNextRefresh(UpdateSchedule::MIN_INTERVAL_MS);
-        return true;
-    }
-}
-
-void UpdateScheduler::setNextRefresh(unsigned long delayMs)
-{
-    if (delayMs < UpdateSchedule::MIN_INTERVAL_MS)
-    {
-        delayMs = UpdateSchedule::MIN_INTERVAL_MS;
-    }
-    _nextRefreshMillis = millis() + delayMs;
-    logger.info("[UpdateScheduler] Next refresh scheduled in %lu seconds", delayMs / 1000);
 }
 
 int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)
