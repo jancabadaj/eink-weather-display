@@ -4,7 +4,6 @@
 
 #include "auth.h"
 #include "config.h"
-#include "definitions.h"
 #include "logger.h"
 
 const bool Auth::isLoggedIn() const
@@ -18,8 +17,8 @@ bool Auth::login(const String &code)
 
     String requestBody = String("") +
                          "grant_type=authorization_code" + "&" +
-                         "client_id=" + String(config::apiClientId) + "&" +
-                         "client_secret=" + String(config::apiClientSecret) + "&" +
+                         "client_id=" + String(Config::Secret::apiClientId) + "&" +
+                         "client_secret=" + String(Config::Secret::apiClientSecret) + "&" +
                          "code=" + code + "&" +
                          "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
                          "scope=read_station";
@@ -37,8 +36,8 @@ bool Auth::refreshTokenIfNeeded()
 
         String requestBody = String("") +
                              "grant_type=refresh_token" + "&" +
-                             "client_id=" + String(config::apiClientId) + "&" +
-                             "client_secret=" + String(config::apiClientSecret) + "&" +
+                             "client_id=" + String(Config::Secret::apiClientId) + "&" +
+                             "client_secret=" + String(Config::Secret::apiClientSecret) + "&" +
                              "refresh_token=" + _refreshToken;
 
         return exchangeToken(requestBody);
@@ -50,7 +49,7 @@ bool Auth::refreshTokenIfNeeded()
 bool Auth::exchangeToken(const String &requestBody)
 {
     HTTPClient http;
-    http.begin(NETATMO_SERVER_AUTH);
+    http.begin(Config::Api::authUrl);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     logger.debug("[Auth] Request body: %s", requestBody.c_str());

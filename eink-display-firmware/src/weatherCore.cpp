@@ -4,7 +4,6 @@
 
 #include "weatherCore.h"
 #include "config.h"
-#include "definitions.h"
 #include "logger.h"
 
 void WeatherCore::loop()
@@ -54,13 +53,13 @@ void WeatherCore::reloadData()
     }
 
     HTTPClient http;
-    http.begin(NETATMO_SERVER_DATA);
+    http.begin(Config::Api::dataUrl);
     http.addHeader("Authorization", "Bearer " + _auth->getAccessToken());
 
     // Send HTTP GET request
     unsigned long requestStartMillis = millis();
     int httpResponseCode = http.GET();
-    if (httpResponseCode > 0)
+    if (httpResponseCode == 200)
     {
         logger.info("[WeatherCore] HTTP Response code: %d", httpResponseCode);
         String payload = http.getString();
@@ -75,7 +74,7 @@ void WeatherCore::reloadData()
     else
     {
         logger.error("[WeatherCore] HTTP error (consecutive failures: %d/%d) %d: %s",
-                     _consecutiveFailures, UpdateSchedule::MAX_CONSECUTIVE_FAILURES, httpResponseCode, http.getString().c_str());
+                     _consecutiveFailures, Config::Schedule::maxConsecutiveFailures, httpResponseCode, http.getString().c_str());
         _consecutiveFailures++;
     }
 
@@ -131,7 +130,7 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
 
 void WeatherCore::updateDisplayAndSchedule()
 {
-    if (_consecutiveFailures >= UpdateSchedule::MAX_CONSECUTIVE_FAILURES)
+    if (_consecutiveFailures >= Config::Schedule::maxConsecutiveFailures)
     {
         logger.error("[WeatherCore] Max consecutive failures reached! Clearing display and stopping updates.");
         _displayManager->clearDisplay();

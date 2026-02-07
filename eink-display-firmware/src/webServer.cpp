@@ -85,7 +85,7 @@ void WebServer::loop()
                             client.println("<p>ExpirationTime : " + String(_auth->_tokenExpirationTimeMs) + "</p>");
 
                             // Login button
-                            String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(config::apiClientId) +
+                            String loginUri = "https://api.netatmo.com/oauth2/authorize?client_id=" + String(Config::Secret::apiClientId) +
                                               "&redirect_uri=http://" + WiFi.localIP().toString() +
                                               "&scope=read_station&state=" + uniqueState;
                             client.println("<p><a href=\"" + loginUri + "\"><button class=\"button\">Login</button></a></p>");

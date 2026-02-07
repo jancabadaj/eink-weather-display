@@ -2,7 +2,7 @@
 #include <memory>
 #include "updateScheduler.h"
 #include "logger.h"
-#include "definitions.h"
+#include "config.h"
 
 bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 {
@@ -22,7 +22,7 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
         time_t currentHourTimestamp = currentTimeSec - (currentTimeSec % 3600);
 
         // 2. Calculate hours until night end
-        int hoursUntilNightEnd = UpdateSchedule::NIGHT_END_HOUR_UTC - currentHour;
+        int hoursUntilNightEnd = Config::Schedule::nightEndHourUtc - currentHour;
         if (hoursUntilNightEnd <= 0)
         {
             hoursUntilNightEnd += 24; // Night end is tomorrow
@@ -34,19 +34,19 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
         unsigned long nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
         _nextRefreshMillis = millis() + nextRefreshDelay;
         logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
-                    UpdateSchedule::NIGHT_END_HOUR_UTC,
+                    Config::Schedule::nightEndHourUtc,
                     currentHour,
                     nextRefreshDelay / 1000);
         return false;
     }
     else
     {
-        unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + UpdateSchedule::REFRESH_INTERVAL_MS + UpdateSchedule::INTERVAL_OFFSET_MS;
+        unsigned long long expectedNextDataTimeMs = dataUtcTimestampMs + Config::Schedule::refreshIntervalMs + Config::Schedule::intervalOffsetMs;
 
         unsigned long nextRefreshDelay;
         while (expectedNextDataTimeMs <= currentUtcTimestampMs) // Handle stale data - add as many intervals as needed to get next expected refresh time in the future
         {
-            expectedNextDataTimeMs += UpdateSchedule::REFRESH_INTERVAL_MS;
+            expectedNextDataTimeMs += Config::Schedule::refreshIntervalMs;
         }
         nextRefreshDelay = (unsigned long)(expectedNextDataTimeMs - currentUtcTimestampMs);
 
@@ -68,9 +68,9 @@ int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)
 
 bool UpdateScheduler::isNightTime(int hour)
 {
-    if (UpdateSchedule::NIGHT_START_HOUR_UTC < UpdateSchedule::NIGHT_END_HOUR_UTC)
+    if (Config::Schedule::nightStartHourUtc < Config::Schedule::nightEndHourUtc)
     {
-        return hour >= UpdateSchedule::NIGHT_START_HOUR_UTC && hour < UpdateSchedule::NIGHT_END_HOUR_UTC;
+        return hour >= Config::Schedule::nightStartHourUtc && hour < Config::Schedule::nightEndHourUtc;
     }
-    return hour >= UpdateSchedule::NIGHT_START_HOUR_UTC || hour < UpdateSchedule::NIGHT_END_HOUR_UTC;
+    return hour >= Config::Schedule::nightStartHourUtc || hour < Config::Schedule::nightEndHourUtc;
 }

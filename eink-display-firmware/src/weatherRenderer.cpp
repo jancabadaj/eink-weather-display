@@ -1,4 +1,4 @@
-#include "definitions.h"
+#include "config.h"
 #include "weatherRenderer.h"
 #include "draw/drawUtils.h"
 #include "draw/fonts/font24.h"
@@ -16,11 +16,11 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
 
     DrawUtils::clearImage(_imageData);
 
-    DrawUtils::drawLine(_imageData, IMAGE_WIDTH / 2, IMAGE_WIDTH / 2, 20, IMAGE_HEIGHT - 100, Black);
-    DrawUtils::drawLine(_imageData, 20, IMAGE_WIDTH - 20, IMAGE_HEIGHT - 100, IMAGE_HEIGHT - 100, Black);
+    DrawUtils::drawLine(_imageData, Config::Display::width / 2, Config::Display::width / 2, 20, Config::Display::height - 100, Black);
+    DrawUtils::drawLine(_imageData, 20, Config::Display::width - 20, Config::Display::height - 100, Config::Display::height - 100, Black);
 
     DrawUtils::drawString(_imageData, 30, 20, "Dnu", &font24, Black);
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 + 30, 20, "Von", &font24, Black);
+    DrawUtils::drawString(_imageData, Config::Display::width / 2 + 30, 20, "Von", &font24, Black);
 
     // Internal
     char tempStr[32];
@@ -51,11 +51,11 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
 
     // External
     // Temperature
-    TemperatureComponent extTempComp(_imageData, IMAGE_WIDTH / 2 + 40, 75);
+    TemperatureComponent extTempComp(_imageData, Config::Display::width / 2 + 40, 75);
     extTempComp.render(data.external.temperature);
 
     // Humidity
-    HumidityComponent extHumComp(_imageData, IMAGE_WIDTH / 2 + 30, 150);
+    HumidityComponent extHumComp(_imageData, Config::Display::width / 2 + 30, 150);
     extHumComp.render(data.external.humidity);
 
     // Timestamp
@@ -64,7 +64,7 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
     std::tm *tm = std::localtime(&timestamp);
     char timeStr[64];
     std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tm);
-    DrawUtils::drawString(_imageData, IMAGE_WIDTH / 2 - 180, IMAGE_HEIGHT - 50, timeStr, &font24, Black);
+    DrawUtils::drawString(_imageData, Config::Display::width / 2 - 180, Config::Display::height - 50, timeStr, &font24, Black);
 }
 
 void WeatherRenderer::renderNightModeIndicator()
@@ -76,7 +76,7 @@ void WeatherRenderer::renderNightModeIndicator()
 void WeatherRenderer::renderNetworkError()
 {
     DrawUtils::clearImage(_imageData);
-    DrawUtils::drawShape(_imageData, IMAGE_WIDTH / 2 - NetworkError.width / 2,
-                         IMAGE_HEIGHT / 2 - NetworkError.height / 2,
+    DrawUtils::drawShape(_imageData, Config::Display::width / 2 - NetworkError.width / 2,
+                         Config::Display::height / 2 - NetworkError.height / 2,
                          &NetworkError, Black);
 }

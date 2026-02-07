@@ -5,7 +5,6 @@
 
 #include "DEV_Config.h"
 
-#include "definitions.h"
 #include "config.h"
 #include "updateScheduler.h"
 #include "hw/displayManager.h"
@@ -29,7 +28,7 @@ std::shared_ptr<WebServer> webServer;
 void setup()
 {
   // Create a new image cache
-  uint16_t imageSize = ((IMAGE_WIDTH % 8 == 0) ? (IMAGE_WIDTH / 8) : (IMAGE_WIDTH / 8 + 1)) * IMAGE_HEIGHT;
+  uint16_t imageSize = Config::Display::widthBytes * Config::Display::heightBytes;
   if ((imageData = (uint8_t *)malloc(imageSize)) == NULL)
   {
     Serial.println("Failed to allocate memory...");
@@ -51,23 +50,23 @@ void setup()
   displayManager->clearDisplay();
 
   Serial.print("Connecting to ");
-  Serial.println(config::wifiSsid);
-  WiFi.begin(config::wifiSsid, config::wifiPassword);
+  Serial.println(Config::Secret::wifiSsid);
+  WiFi.begin(Config::Secret::wifiSsid, Config::Secret::wifiPassword);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
   }
   Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
+  Serial.print("WiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
 
-  // Initialize Google Sheets logging
-  logger.init(config::logDeploymentId, config::logApiKey);
-  logger.setLogLevel(LogLevel::INFO);
+  // Initialize logging
+  logger.init(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
+  logger.setLogLevel(Config::Log::minRemoteLevel);
 
   webServer->init();
+  logger.critical("System startup");
 }
 
 void loop()

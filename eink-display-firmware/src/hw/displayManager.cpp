@@ -5,7 +5,7 @@
 #include "utility/EPD_7in5_V2.h"
 
 #include "GUI_Paint.h"
-#include "definitions.h"
+#include "../config.h"
 
 // TODO: Paint_NewImage should be removed and DEV_Module_Init can be moved to main.cpp
 // Maybe this whole class can be deleted, or reworked (see TODO in refreshDisplay)
@@ -13,7 +13,7 @@
 void DisplayManager::init()
 {
   DEV_Module_Init();
-  Paint_NewImage(_imageData, IMAGE_WIDTH, IMAGE_HEIGHT, 0, WHITE);
+  Paint_NewImage(_imageData, Config::Display::width, Config::Display::height, 0, WHITE);
 }
 
 // TODO: Figure out better way to init + sleep (smart pointers? init when creating and sleep when leaving scope)

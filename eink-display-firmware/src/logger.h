@@ -1,20 +1,13 @@
 #pragma once
 
 #include <Arduino.h>
-
-enum class LogLevel
-{
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR
-};
+#include "config.h"
 
 class Logger
 {
 public:
-    Logger(const char *deviceName = "ESP32-WeatherDisplay")
-        : _deviceName(deviceName), _minLevel(LogLevel::DEBUG), _googleSheetsEnabled(false) {}
+    Logger()
+        : _minLevel(LogLevel::DEBUG), _googleSheetsEnabled(false) {}
 
     // Initialize with Google Sheets credentials (empty strings = Serial only)
     void init(const char *deploymentId, const char *apiKey);
@@ -27,6 +20,7 @@ public:
     void info(const char *format, ...);
     void warning(const char *format, ...);
     void error(const char *format, ...);
+    void critical(const char *format, ...);
 
     // Generic log with specified level
     void log(LogLevel level, const char *format, ...);
@@ -36,7 +30,6 @@ private:
     void sendToGoogleSheets(const char *message, LogLevel level);
     const char *levelToString(LogLevel level);
 
-    const char *_deviceName;
     LogLevel _minLevel;
 
     // Google Sheets configuration

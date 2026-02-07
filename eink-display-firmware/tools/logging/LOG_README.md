@@ -30,6 +30,8 @@ Content-Type: application/x-www-form-urlencoded
 key=api-key&level=log-level&log=log-message
 ```
 
-## About the Warning:
-
+## About the deployment warning:
 Deployment warning is Google's generic Apps Script permission - but by using `openById()` with a specific sheet ID, the script can **only** access that one spreadsheet, nothing else.
+
+## Performance
+Because of https overhead, it takes around ~2 seconds to send remote log on ESP32 hardware. Therefore remote logging should be limited to warnings/errors.

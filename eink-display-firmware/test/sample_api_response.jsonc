@@ -1,0 +1,98 @@
+// https://api.netatmo.com/api/getstationsdata
+{
+    "body": {
+        "devices": [
+            {
+                "_id": "70:ee:50:12:34:56",
+                "date_setup": 1694019332,
+                "last_setup": 1694021057,
+                "type": "NAMain",
+                "last_status_store": 1700674815,
+                "module_name": "Weather Station",
+                "firmware": 202,
+                "wifi_status": 55,
+                "reachable": true,
+                "co2_calibrating": false,
+                "data_type": [
+                    "Temperature",
+                    "CO2",
+                    "Humidity",
+                    "Noise",
+                    "Pressure"
+                ],
+                "place": {
+                    "altitude": 200,
+                    "city": "Zurich",
+                    "country": "CH",
+                    "timezone": "Europe/Zurich",
+                    "location": [
+                        8.5417,
+                        47.3769
+                    ]
+                },
+                "station_name": "Home (Weather Station)",
+                "home_id": "5f3c8a01e4b0d72f9a1b3c5d",
+                "home_name": "Home",
+                "dashboard_data": {
+                    "time_utc": 1700674814,
+                    "Temperature": 21.4,
+                    "CO2": 903,
+                    "Humidity": 42,
+                    "Noise": 37,
+                    "Pressure": 1021.9,
+                    "AbsolutePressure": 984.3,
+                    "min_temp": 19.5,
+                    "max_temp": 21.4,
+                    "date_max_temp": 1700674511,
+                    "date_min_temp": 1700632102,
+                    "temp_trend": "up",
+                    "pressure_trend": "up"
+                },
+                "modules": [
+                    {
+                        "_id": "02:00:00:ab:cd:ef",
+                        "type": "NAModule1",
+                        "module_name": "Outdoor Module",
+                        "last_setup": 1694021334,
+                        "data_type": [
+                            "Temperature",
+                            "Humidity"
+                        ],
+                        "battery_percent": 92,
+                        "reachable": true,
+                        "firmware": 53,
+                        "last_message": 1700674810,
+                        "last_seen": 1700674810,
+                        "rf_status": 59,
+                        "battery_vp": 5860,
+                        "dashboard_data": {
+                            "time_utc": 1700674810,
+                            "Temperature": -1.5,
+                            "Humidity": 84,
+                            "min_temp": -1.5,
+                            "max_temp": 5.5,
+                            "date_max_temp": 1700619338,
+                            "date_min_temp": 1700674810,
+                            "temp_trend": "stable"
+                        }
+                    }
+                ]
+            }
+        ],
+        "user": {
+            "mail": "user@example.com",
+            "administrative": {
+                "lang": "sk",
+                "reg_locale": "sk-SK",
+                "country": "SK",
+                "unit": 0,
+                "windunit": 0,
+                "pressureunit": 0,
+                "feel_like_algo": 0
+            }
+        }
+    },
+    "status": "ok",
+    "time_exec": 0.03676009178161621,
+    "time_server": 1700674855
+}

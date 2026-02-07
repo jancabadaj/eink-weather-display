@@ -61,6 +61,14 @@ void Logger::error(const char *format, ...)
     va_end(args);
 }
 
+void Logger::critical(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    logInternal(LogLevel::CRITICAL, format, args);
+    va_end(args);
+}
+
 void Logger::log(LogLevel level, const char *format, ...)
 {
     va_list args;
@@ -129,6 +137,8 @@ const char *Logger::levelToString(LogLevel level)
         return "WARN";
     case LogLevel::ERROR:
         return "ERROR";
+    case LogLevel::CRITICAL:
+        return "CRITICAL";
     default:
         return "UNKNOWN";
     }

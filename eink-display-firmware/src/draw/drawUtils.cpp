@@ -1,5 +1,5 @@
 #include "drawUtils.h"
-#include "../definitions.h"
+#include "../config.h"
 
 #define COLOR_WHITE 0xFF
 #define COLOR_BLACK 0x00
@@ -18,12 +18,12 @@ static uint16_t drawStringHelper(uint8_t *imageData, uint16_t xStart, uint16_t y
                                  const FontType *font, Color color, uint16_t fontHeight,
                                  GetWidthFunc getWidth, DrawCharFunc drawCharFunc)
 {
-    if (xStart > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    if (xStart > Config::Display::width || y > Config::Display::height)
     {
         return 0; // Starting point out of bounds
     }
 
-    if ((y + fontHeight) > IMAGE_HEIGHT)
+    if ((y + fontHeight) > Config::Display::height)
     {
         return 0; // Height exceeds image bounds
     }
@@ -34,7 +34,7 @@ static uint16_t drawStringHelper(uint8_t *imageData, uint16_t xStart, uint16_t y
     {
         uint16_t charWidth = getWidth(*str);
 
-        if ((xCurrent + charWidth) > IMAGE_WIDTH)
+        if ((xCurrent + charWidth) > Config::Display::width)
         {
             return xCurrent - xStart; // String exceeds image width
         }
@@ -50,11 +50,11 @@ static uint16_t drawStringHelper(uint8_t *imageData, uint16_t xStart, uint16_t y
 
 void DrawUtils::clearImage(uint8_t *imageData)
 {
-    for (uint16_t y = 0; y < IMAGE_HEIGHT_BYTE; y++)
+    for (uint16_t y = 0; y < Config::Display::heightBytes; y++)
     {
-        for (uint16_t x = 0; x < IMAGE_WIDTH_BYTE; x++) // 8 pixel =  1 byte
+        for (uint16_t x = 0; x < Config::Display::widthBytes; x++) // 8 pixel =  1 byte
         {
-            uint32_t addr = x + y * IMAGE_WIDTH_BYTE;
+            uint32_t addr = x + y * Config::Display::widthBytes;
             imageData[addr] = COLOR_WHITE;
         }
     }
@@ -62,12 +62,12 @@ void DrawUtils::clearImage(uint8_t *imageData)
 
 void DrawUtils::setPixel(uint8_t *imageData, uint16_t x, uint16_t y, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    if (x > Config::Display::width || y > Config::Display::height)
     {
         return;
     }
 
-    uint32_t addr = x / 8 + y * IMAGE_WIDTH_BYTE;
+    uint32_t addr = x / 8 + y * Config::Display::widthBytes;
     uint8_t rData = imageData[addr];
     if (color == Black)
         imageData[addr] = rData & ~(0x80 >> (x % 8));
@@ -77,8 +77,8 @@ void DrawUtils::setPixel(uint8_t *imageData, uint16_t x, uint16_t y, Color color
 
 void DrawUtils::drawLine(uint8_t *imageData, uint16_t xStart, uint16_t xEnd, uint16_t yStart, uint16_t yEnd, Color color)
 {
-    if (xStart > IMAGE_WIDTH || yStart > IMAGE_HEIGHT ||
-        xEnd > IMAGE_WIDTH || yEnd > IMAGE_HEIGHT)
+    if (xStart > Config::Display::width || yStart > Config::Display::height ||
+        xEnd > Config::Display::width || yEnd > Config::Display::height)
     {
         return;
     }
@@ -111,8 +111,8 @@ void DrawUtils::drawLine(uint8_t *imageData, uint16_t xStart, uint16_t xEnd, uin
 
 void DrawUtils::drawRectangle(uint8_t *imageData, uint16_t xStart, uint16_t xEnd, uint16_t yStart, uint16_t yEnd, Color color, bool fill)
 {
-    if (xStart > IMAGE_WIDTH || yStart > IMAGE_HEIGHT ||
-        xEnd > IMAGE_WIDTH || yEnd > IMAGE_HEIGHT)
+    if (xStart > Config::Display::width || yStart > Config::Display::height ||
+        xEnd > Config::Display::width || yEnd > Config::Display::height)
     {
         return;
     }
@@ -136,12 +136,12 @@ void DrawUtils::drawRectangle(uint8_t *imageData, uint16_t xStart, uint16_t xEnd
 
 uint16_t DrawUtils::drawShape(uint8_t *imageData, uint16_t x, uint16_t y, const Shape *shape, Color color)
 {
-    if (x > IMAGE_WIDTH || y > IMAGE_HEIGHT)
+    if (x > Config::Display::width || y > Config::Display::height)
     {
         return 0; // Starting point out of bounds
     }
 
-    if ((x + shape->width) > IMAGE_WIDTH || (y + shape->height) > IMAGE_HEIGHT)
+    if ((x + shape->width) > Config::Display::width || (y + shape->height) > Config::Display::height)
     {
         return 0; // Exceeds image bounds
     }
