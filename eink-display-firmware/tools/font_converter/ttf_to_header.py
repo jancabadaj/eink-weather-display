@@ -209,7 +209,7 @@ def convert_ttf_to_header(ttf_path, height, output_path, start_char=32, end_char
 
     # Generate font name if not provided
     if font_name is None:
-        font_name = f"Font{height}_{Path(ttf_path).stem.replace('-', '_').replace(' ', '_')}"
+        font_name = f"Font{height}_{Path(ttf_path).stem.replace('-', '_').replace(' ', '_')}_{'Proportional' if proportional else 'Monospace'}"
 
     # Get font metrics for proper baseline alignment
     baseline, ascent, descent = get_font_metrics(font, height)

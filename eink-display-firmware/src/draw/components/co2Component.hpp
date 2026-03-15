@@ -21,7 +21,7 @@ public:
         char tempStr[32];
         ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
         snprintf(tempStr, sizeof(tempStr), "%d", co2Ppm);
-        DrawUtils::drawStringProp(_imageData, _startX + 150, _startY + 10, tempStr, &font, Black);
+        DrawUtils::drawString(_imageData, _startX + 150, _startY + 10, tempStr, &font, Black);
 
         // Draw empty scale first
         DrawUtils::drawShape(_imageData, _startX, _startY, &CO2Icon, Black);

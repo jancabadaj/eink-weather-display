@@ -5,7 +5,6 @@
 #include <sstream>
 #include <cstdint>
 
-#include "../../src/TestImageData.c"
 #include "../../src/weatherRenderer.h"
 
 // BMP file header structure
@@ -185,16 +184,31 @@ int main(int argc, char *argv[])
         // Default: render weather
         std::cout << "Rendering weather" << std::endl;
         auto now = std::chrono::system_clock::now();
+        auto nowSec = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+
+        // Generate sample pressure history (24 hours of data)
+        PressureHistory pressureHistory;
+        float samplePressures[] = {
+            1007.5, 1007.6, 1007.8, 1007.6, 1007.9, 1008.2,
+            1007.1, 1006.5, 1005.9, 1004.9, 1004.2, 1003.8,
+            1003.5, 1002.9, 1002.5, 1002.3, 1001.6, 1001.3,
+            1000.5, 999.9, 1000.8, 1001.9, 1003.3, 1004.5};
+        for (int i = 0; i < 24; i++)
+        {
+            pressureHistory.addReading(nowSec - (23 - i) * 3600, samplePressures[i]);
+        }
+
         renderer->renderWeather(WeatherData{
-            .internal = {
-                .temperature = 22.5,
-                .humidity = 55,
-                .pressure = 1013.25,
-                .noise = 30,
-                .co2 = 520},
-            .external = {.temperature = -20.1, .humidity = 60},
-            .data_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()),
-            .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())});
+                                    .internal = {
+                                        .temperature = 22.5,
+                                        .humidity = 55,
+                                        .pressure = 1004.5,
+                                        .noise = 30,
+                                        .co2 = 520},
+                                    .external = {.temperature = -20.1, .humidity = 60},
+                                    .data_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()),
+                                    .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())},
+                                pressureHistory);
     }
 
     std::vector<uint8_t> testData(imageData, imageData + imageSize);

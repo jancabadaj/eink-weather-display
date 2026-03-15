@@ -62,8 +62,7 @@ bool Auth::exchangeToken(const String &requestBody)
         logger.info("[Auth] HTTP Response code: %d", httpResponseCode);
         logger.debug("[Auth] Response payload: %s", payload.c_str());
 
-        StaticJsonDocument<384> doc;
-
+        JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payload);
         if (error)
         {

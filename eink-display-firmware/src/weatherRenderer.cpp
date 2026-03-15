@@ -1,62 +1,52 @@
 #include "config.h"
 #include "weatherRenderer.h"
 #include "draw/drawUtils.h"
-#include "draw/fonts/font24.h"
-#include "draw/shapes/pressure.h"
-#include "draw/shapes/noise.h"
+#include "draw/fonts/font18-prop.h"
 #include "draw/shapes/nightSky.h"
 #include "draw/shapes/networkError.h"
 #include "draw/components/temperatureComponent.hpp"
 #include "draw/components/humidityComponent.hpp"
 #include "draw/components/co2Component.hpp"
+#include "draw/components/layoutComponent.hpp"
+#include "draw/components/pressureChartComponent.hpp"
 
-void WeatherRenderer::renderWeather(const WeatherData &data)
+void WeatherRenderer::renderWeather(const WeatherData &data, const PressureHistory &pressureHistory)
 {
-    Shape &font24 = Font24Mono;
+    ProportionalFont &font18 = Font18_Roboto_BoldCondensed_Proportional;
 
     DrawUtils::clearImage(_imageData);
-
-    DrawUtils::drawLine(_imageData, Config::Display::width / 2, Config::Display::width / 2, 20, Config::Display::height - 100, Black);
-    DrawUtils::drawLine(_imageData, 20, Config::Display::width - 20, Config::Display::height - 100, Config::Display::height - 100, Black);
-
-    DrawUtils::drawString(_imageData, 30, 20, "Dnu", &font24, Black);
-    DrawUtils::drawString(_imageData, Config::Display::width / 2 + 30, 20, "Von", &font24, Black);
 
     // Internal
     char tempStr[32];
 
+    // Layout
+    LayoutComponent layoutComp(_imageData);
+    layoutComp.render();
+
     // Temperature
-    TemperatureComponent tempComp(_imageData, 75, 75);
+    TemperatureComponent tempComp(_imageData, 80, 125);
     tempComp.render(data.internal.temperature);
 
     // Humidity
-    HumidityComponent humComp(_imageData, 65, 150);
+    HumidityComponent humComp(_imageData, 70, 215);
     humComp.render(data.internal.humidity);
 
-    // Pressure
-    DrawUtils::drawShape(_imageData, 30, 315, &PressureIcon, Black);
-    DrawUtils::drawString(_imageData, 60, 320, "Tlak   : ", &font24, Black);
-    snprintf(tempStr, sizeof(tempStr), "%.1f mbar", data.internal.pressure);
-    DrawUtils::drawString(_imageData, 210, 320, tempStr, &font24, Black);
-
-    // Noise
-    DrawUtils::drawShape(_imageData, 30, 345, &NoiseIcon, Black);
-    DrawUtils::drawString(_imageData, 60, 350, "Hluk   : ", &font24, Black);
-    snprintf(tempStr, sizeof(tempStr), "%d dB", data.internal.noise);
-    DrawUtils::drawString(_imageData, 210, 350, tempStr, &font24, Black);
-
     // CO2
-    CO2Component co2Comp(_imageData, 65, 240);
+    CO2Component co2Comp(_imageData, 75, 35);
     co2Comp.render(data.internal.co2);
 
     // External
     // Temperature
-    TemperatureComponent extTempComp(_imageData, Config::Display::width / 2 + 40, 75);
+    TemperatureComponent extTempComp(_imageData, Config::Display::width / 2 + 40, 125);
     extTempComp.render(data.external.temperature);
 
     // Humidity
-    HumidityComponent extHumComp(_imageData, Config::Display::width / 2 + 30, 150);
+    HumidityComponent extHumComp(_imageData, Config::Display::width / 2 + 30, 215);
     extHumComp.render(data.external.humidity);
+
+    // Pressure chart
+    PressureChartComponent pressureChart(_imageData, 40, 380, 720, 98);
+    pressureChart.render(pressureHistory);
 
     // Timestamp
     auto timepoint = std::chrono::system_clock::time_point(data.data_timestamp);
@@ -64,7 +54,7 @@ void WeatherRenderer::renderWeather(const WeatherData &data)
     std::tm *tm = std::localtime(&timestamp);
     char timeStr[64];
     std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tm);
-    DrawUtils::drawString(_imageData, Config::Display::width / 2 - 180, Config::Display::height - 50, timeStr, &font24, Black);
+    DrawUtils::drawString(_imageData, Config::Display::width / 2 + 10, 330, timeStr, &font18, Black);
 }
 
 void WeatherRenderer::renderNightModeIndicator()

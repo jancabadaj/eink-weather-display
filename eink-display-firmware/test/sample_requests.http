@@ -1,0 +1,24 @@
+### Weather station data
+GET https://api.netatmo.com/api/getstationsdata
+Authorization: Bearer ....
+
+### Historical data
+# timestamps are by default offset + scale/2
+# (means for scale=1hour, the timestamp is at the middle of the hour)
+GET https://api.netatmo.com/api/getmeasure
+?optimize=false
+&real_time=false
+&device_id=70:ee:50:12:34:56
+&date_begin=1764543600
+&scale=1hour
+&type=pressure
+Authorization: Bearer ....
+
+
+### Remote logging
+# @no-redirect
+POST https://script.google.com/macros/s/{{logDeploymentId}}/exec
+Content-Type: application/x-www-form-urlencoded
+key={{logApiKey}}
+&level=information
+&log=test-log-message-2

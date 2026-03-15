@@ -11,7 +11,7 @@ class WeatherRenderer
 public:
     WeatherRenderer(uint8_t *imageData) : _imageData(imageData) {}
 
-    void renderWeather(const WeatherData &data);
+    void renderWeather(const WeatherData &data, const PressureHistory &pressureHistory);
     void renderNightModeIndicator();
     void renderNetworkError();
 

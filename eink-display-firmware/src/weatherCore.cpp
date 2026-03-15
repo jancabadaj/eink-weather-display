@@ -68,6 +68,8 @@ void WeatherCore::reloadData()
 
         _serverClock->syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
 
+        updatePressureHistory();
+
         _consecutiveFailures = 0;
         _hasInitialData = true;
     }
@@ -86,7 +88,7 @@ void WeatherCore::reloadData()
 
 void WeatherCore::parseAndUpdateWeatherData(const String &payload)
 {
-    StaticJsonDocument<4096> doc; // Max size of expected payload
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
 
     if (error)
@@ -97,6 +99,13 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
 
     // Navigate to the first device (main station)
     JsonObject device = doc["body"]["devices"][0];
+
+    // Extract device ID for history API
+    const char *deviceId = device["_id"] | "";
+    if (strlen(deviceId) > 0)
+    {
+        _deviceId = String(deviceId);
+    }
 
     // Internal data (main station)
     JsonObject internalDash = device["dashboard_data"];
@@ -165,8 +174,71 @@ void WeatherCore::updateDisplayAndSchedule()
         logger.info("[WeatherCore] Updating display. [Data timestamp: %lld, Server time: %lld]",
                     _weatherData.data_timestamp.count(),
                     _weatherData.retrieval_timestamp.count());
-        _renderer->renderWeather(_weatherData);
+        _renderer->renderWeather(_weatherData, _pressureHistory);
         _displayManager->refreshDisplay();
         logger.info("[WeatherCore] Display updated");
     }
+}
+
+void WeatherCore::updatePressureHistory()
+{
+    unsigned long nowSec = _weatherData.retrieval_timestamp.count() / 1000;
+    unsigned long dataTimestampSec = _weatherData.data_timestamp.count() / 1000;
+    if (nowSec == 0 || dataTimestampSec == 0 || _deviceId.length() == 0)
+        return;
+
+    unsigned long maxGap = (Config::PressureChart::historyHours * 3600UL) / Config::PressureChart::barCount;
+    if (_pressureHistory.hasGap(nowSec, maxGap))
+    {
+        fetchPressureHistory(nowSec);
+    }
+    _pressureHistory.addReading(dataTimestampSec, _weatherData.internal.pressure);
+}
+
+void WeatherCore::fetchPressureHistory(unsigned long nowSec)
+{
+    unsigned long dateBegin = nowSec - (Config::PressureChart::historyHours * 3600UL);
+
+    String url = Config::Api::historyUrl;
+    url += "?device_id=" + _deviceId;
+    url += "&date_begin=" + String(dateBegin);
+    url += "&scale=1hour";
+    url += "&type=pressure";
+    url += "&optimize=false";
+    url += "&real_time=false";
+
+    HTTPClient http;
+    http.begin(url);
+    http.addHeader("Authorization", "Bearer " + _auth->getAccessToken());
+
+    int httpResponseCode = http.GET();
+    if (httpResponseCode != 200)
+    {
+        logger.error("[WeatherCore] Pressure history fetch failed: %d", httpResponseCode);
+        http.end();
+        return;
+    }
+
+    String payload = http.getString();
+    http.end();
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (error)
+    {
+        logger.error("[WeatherCore] Pressure history JSON parse failed: %s", error.f_str());
+        return;
+    }
+
+    _pressureHistory.clear();
+    for (JsonPair kv : doc["body"].as<JsonObject>())
+    {
+        unsigned long timestamp = strtoul(kv.key().c_str(), nullptr, 10);
+        JsonArray vals = kv.value().as<JsonArray>();
+        if (vals.size() == 0)
+            continue;
+        _pressureHistory.addReading(timestamp, vals[0] | 0.0f);
+    }
+
+    logger.info("[WeatherCore] Pressure history loaded: %d entries", _pressureHistory.count);
 }

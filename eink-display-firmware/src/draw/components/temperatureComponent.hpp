@@ -22,9 +22,9 @@ public:
         ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
         uint16_t currentX = _startX + 55;
         snprintf(tempStr, sizeof(tempStr), "%.1f", temperatureCelsius);
-        currentX += DrawUtils::drawStringProp(_imageData, currentX, _startY + 10, tempStr, &font, Black) + 10;
+        currentX += DrawUtils::drawString(_imageData, currentX, _startY + 10, tempStr, &font, Black) + 10;
         currentX += DrawUtils::drawShape(_imageData, currentX, _startY + 14, &DegreeIcon, Black);
-        DrawUtils::drawCharProp(_imageData, currentX, _startY + 10, 'C', &font, Black);
+        DrawUtils::drawChar(_imageData, currentX, _startY + 10, 'C', &font, Black);
     }
 
 private:

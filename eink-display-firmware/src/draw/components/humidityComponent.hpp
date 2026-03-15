@@ -22,7 +22,7 @@ public:
         char tempStr[32];
         ProportionalFont &font = Font58_Roboto_BoldCondensed_Proportional;
         snprintf(tempStr, sizeof(tempStr), "%d%%", humidityPercentage);
-        DrawUtils::drawStringProp(_imageData, _startX + 65, _startY + 12, tempStr, &font, Black);
+        DrawUtils::drawString(_imageData, _startX + 65, _startY + 12, tempStr, &font, Black);
 
         // Draw empty icon first
         DrawUtils::drawShape(_imageData, _startX, _startY, &HumidityEmptyIcon, Black);

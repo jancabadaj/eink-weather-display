@@ -135,6 +135,7 @@ async function init() {
     await compileAndExecute();
 
     // Start watching for changes
+    watchFile(generatorCppFilePath, compileAndExecute);
     watchFile(srcFolderPath, compileAndExecute);
     watchFile(indexHtmlPath, copyHtml);
 

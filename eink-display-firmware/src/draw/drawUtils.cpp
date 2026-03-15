@@ -186,7 +186,7 @@ uint16_t DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const c
     return drawShape(imageData, x, y, &charShape, color);
 }
 
-uint16_t DrawUtils::drawStringProp(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const ProportionalFont *font, Color color)
+uint16_t DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const ProportionalFont *font, Color color)
 {
     auto getWidth = [&](char c) -> uint16_t
     {
@@ -195,13 +195,13 @@ uint16_t DrawUtils::drawStringProp(uint8_t *imageData, uint16_t x, uint16_t y, c
     };
     auto drawCharFunc = [&](uint16_t cx, uint16_t cy, char c)
     {
-        drawCharProp(imageData, cx, cy, c, font, color);
+        drawChar(imageData, cx, cy, c, font, color);
     };
 
     return drawStringHelper(imageData, x, y, str, font, color, font->height, getWidth, drawCharFunc);
 }
 
-uint16_t DrawUtils::drawCharProp(uint8_t *imageData, uint16_t x, uint16_t y, char c, const ProportionalFont *font, Color color)
+uint16_t DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, char c, const ProportionalFont *font, Color color)
 {
     uint8_t charIndex = c - font->firstChar;
     uint16_t charWidth = font->widths[charIndex];

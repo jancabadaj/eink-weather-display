@@ -34,8 +34,12 @@ private:
 
     void parseAndUpdateWeatherData(const String &payload);
     void updateDisplayAndSchedule();
+    void updatePressureHistory();
+    void fetchPressureHistory(unsigned long nowSec);
 
     WeatherData _weatherData;
+    PressureHistory _pressureHistory;
+    String _deviceId;
     std::chrono::milliseconds _previousDataTimestamp{0};
     bool _hasInitialData = false;
     bool _updateLoopStopped = false;
