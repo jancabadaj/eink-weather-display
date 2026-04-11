@@ -9,7 +9,7 @@
 #include "updateScheduler.h"
 #include "hw/displayManager.h"
 #include "auth.h"
-#include "webServer.h"
+#include "web/webServer.h"
 #include "weatherRenderer.h"
 #include "weatherCore.h"
 #include "serverClock.h"

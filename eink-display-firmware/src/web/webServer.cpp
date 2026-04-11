@@ -1,7 +1,7 @@
 #include <WiFi.h>
 #include <Arduino.h>
 
-#include "config.h"
+#include "../config.h"
 #include "webServer.h"
 #include "webUiTemplate.h"
 

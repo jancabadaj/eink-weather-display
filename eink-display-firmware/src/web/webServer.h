@@ -1,10 +1,10 @@
 #pragma once
 
 #include <WiFi.h>
-#include "auth.h"
-#include "hw/displayManager.h"
-#include "weatherCore.h"
-#include "configOverrides.h"
+#include "../auth.h"
+#include "../hw/displayManager.h"
+#include "../weatherCore.h"
+#include "../configOverrides.h"
 
 class WebServer
 {
