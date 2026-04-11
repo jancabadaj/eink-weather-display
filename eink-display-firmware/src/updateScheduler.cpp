@@ -6,13 +6,15 @@
 
 bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 {
-
     unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
-    logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC time: %llu, Data timestamp: %llu, Age: %llus",
+    logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC: %llu, Data timestamp: %llu, Age: %llus",
                 currentUtcTimestampMs, dataUtcTimestampMs,
                 (currentUtcTimestampMs - dataUtcTimestampMs) / 1000);
+
     int currentHour = getCurrentHour(currentUtcTimestampMs);
-    bool isNight = isNightTime(currentHour);
+    int nightStart = _configOverrides->getNightStartHour();
+    int nightEnd = _configOverrides->getNightEndHour();
+    bool isNight = isNightTime(currentHour, nightStart, nightEnd);
 
     if (isNight)
     {
@@ -22,7 +24,7 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
         time_t currentHourTimestamp = currentTimeSec - (currentTimeSec % 3600);
 
         // 2. Calculate hours until night end
-        int hoursUntilNightEnd = Config::Schedule::nightEndHourUtc - currentHour;
+        int hoursUntilNightEnd = nightEnd - currentHour;
         if (hoursUntilNightEnd <= 0)
         {
             hoursUntilNightEnd += 24; // Night end is tomorrow
@@ -34,9 +36,7 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
         unsigned long nextRefreshDelay = (nightEndTimestamp - currentTimeSec) * 1000;
         _nextRefreshMillis = millis() + nextRefreshDelay;
         logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
-                    Config::Schedule::nightEndHourUtc,
-                    currentHour,
-                    nextRefreshDelay / 1000);
+                    nightEnd, currentHour, nextRefreshDelay / 1000);
         return false;
     }
     else
@@ -66,11 +66,11 @@ int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)
     return timeinfo.tm_hour;
 }
 
-bool UpdateScheduler::isNightTime(int hour)
+bool UpdateScheduler::isNightTime(int hour, int nightStart, int nightEnd)
 {
-    if (Config::Schedule::nightStartHourUtc < Config::Schedule::nightEndHourUtc)
+    if (nightStart < nightEnd)
     {
-        return hour >= Config::Schedule::nightStartHourUtc && hour < Config::Schedule::nightEndHourUtc;
+        return hour >= nightStart && hour < nightEnd;
     }
-    return hour >= Config::Schedule::nightStartHourUtc || hour < Config::Schedule::nightEndHourUtc;
+    return hour >= nightStart || hour < nightEnd;
 }

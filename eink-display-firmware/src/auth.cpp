@@ -1,15 +1,15 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 
 #include "auth.h"
 #include "config.h"
 #include "logger.h"
 
-const bool Auth::isLoggedIn() const
-{
-    return _loggedIn;
-}
+static const char *NVS_NS = "auth";
+static const char *KEY_ACCESS = "access";
+static const char *KEY_REFRESH = "refresh";
 
 bool Auth::login(const String &code)
 {
@@ -32,7 +32,8 @@ bool Auth::refreshTokenIfNeeded()
     // Use subtraction with signed cast to avoid millis() overflow at ULONG_MAX (~49.7 days)
     if (_loggedIn && (long)(_tokenExpirationTimeMs - millis()) <= 60000)
     {
-        logger.info("[Auth] Refreshing token (expiration at %lu, current time %lu)", _tokenExpirationTimeMs, millis());
+        logger.info("[Auth] Refreshing token (expiration at %lu, current millis %lu)",
+                    _tokenExpirationTimeMs, millis());
 
         String requestBody = String("") +
                              "grant_type=refresh_token" + "&" +
@@ -54,7 +55,6 @@ bool Auth::exchangeToken(const String &requestBody)
 
     logger.debug("[Auth] Request body: %s", requestBody.c_str());
 
-    // Send HTTP POST request
     int httpResponseCode = http.POST(requestBody);
     if (httpResponseCode > 0)
     {
@@ -77,11 +77,13 @@ bool Auth::exchangeToken(const String &requestBody)
 
         _accessToken = String(access_token);
         _refreshToken = String(refresh_token);
-        _tokenExpirationTimeMs = millis() + expires_in * 1000; // expires_in is in seconds
+        _tokenExpirationTimeMs = millis() + (unsigned long)expires_in * 1000UL; // expires_in is in seconds
 
         http.end();
         _loggedIn = true;
-        logger.info("[Auth] Token exchange successful");
+        logger.info("[Auth] Token exchange successful, expires in %lds", expires_in);
+
+        saveTokens();
         return true;
     }
     else
@@ -91,4 +93,34 @@ bool Auth::exchangeToken(const String &requestBody)
         _loggedIn = false;
         return false;
     }
+}
+
+void Auth::loadTokens()
+{
+    Preferences prefs;
+    prefs.begin(NVS_NS, true);
+    String access = prefs.getString(KEY_ACCESS, "");
+    String refresh = prefs.getString(KEY_REFRESH, "");
+    prefs.end();
+
+    if (access.isEmpty() || refresh.isEmpty())
+    {
+        logger.info("[Auth] No stored tokens found, login required");
+        return;
+    }
+
+    _accessToken = access;
+    _refreshToken = refresh;
+    _tokenExpirationTimeMs = millis(); // We don't know the exact expiry, so force a refresh on first use
+    _loggedIn = true;
+    logger.info("[Auth] Tokens loaded from storage, will refresh on first use");
+}
+
+void Auth::saveTokens()
+{
+    Preferences prefs;
+    prefs.begin(NVS_NS, false);
+    prefs.putString(KEY_ACCESS, _accessToken);
+    prefs.putString(KEY_REFRESH, _refreshToken);
+    prefs.end();
 }

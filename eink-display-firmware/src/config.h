@@ -6,6 +6,13 @@
 // Secret credentials - copy config.secret.template.h to config.secret.h and edit
 #include "config.secret.h"
 
+namespace Config
+{
+    // Ensure persisted data is compatible with firmware version
+    // Should be incremented on any change that requires clearing persisted overrides (ConfigOverrides)
+    constexpr const char *version = "1";
+}
+
 // =============================================================================
 // Display
 // =============================================================================

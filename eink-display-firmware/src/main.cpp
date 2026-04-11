@@ -17,6 +17,7 @@
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
 
+std::shared_ptr<ConfigOverrides> configOverrides;
 std::shared_ptr<Auth> auth;
 std::shared_ptr<ServerClock> serverClock;
 std::shared_ptr<UpdateScheduler> updateScheduler;
@@ -37,13 +38,14 @@ void setup()
   }
 
   // Initialize components
+  configOverrides = std::make_shared<ConfigOverrides>();
   auth = std::make_shared<Auth>();
   serverClock = std::make_shared<ServerClock>();
   displayManager = std::make_shared<DisplayManager>(imageData);
   renderer = std::make_shared<WeatherRenderer>(imageData);
-  updateScheduler = std::make_shared<UpdateScheduler>(serverClock);
+  updateScheduler = std::make_shared<UpdateScheduler>(serverClock, configOverrides);
   weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager, updateScheduler, serverClock);
-  webServer = std::make_shared<WebServer>(weatherCore, displayManager, auth);
+  webServer = std::make_shared<WebServer>(weatherCore, updateScheduler, displayManager, auth, configOverrides);
 
   // Initialize serial and display - must be first to allocate memory for imageData
   displayManager->init();
@@ -60,6 +62,10 @@ void setup()
   Serial.println("");
   Serial.print("WiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
+
+  // Load persisted config overrides and tokens
+  configOverrides->init();
+  auth->loadTokens();
 
   // Initialize logging
   logger.init(Config::Secret::logDeploymentId, Config::Secret::logApiKey);

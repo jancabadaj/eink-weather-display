@@ -1,17 +1,15 @@
 #pragma once
 
-#include <chrono>
-#include <array>
-#include <algorithm>
 #include <memory>
 #include "serverClock.h"
-
+#include "configOverrides.h"
 
 class UpdateScheduler
 {
 public:
-    UpdateScheduler(std::shared_ptr<ServerClock> serverClock)
-        : _serverClock(serverClock) {}
+    UpdateScheduler(std::shared_ptr<ServerClock> serverClock,
+                    std::shared_ptr<ConfigOverrides> configOverrides)
+        : _serverClock(serverClock), _configOverrides(configOverrides) {}
 
     // Schedule next refresh on data timestamp + refresh interval. Return false if night time.
     bool scheduleRefresh(unsigned long long dataUtcTimestampMs);
@@ -20,9 +18,9 @@ public:
 
 private:
     static int getCurrentHour(unsigned long long currentUtcTimestampMs);
-    static bool isNightTime(int hour);
-    void setNextRefresh(unsigned long delayMs);
+    static bool isNightTime(int hour, int nightStart, int nightEnd);
 
     std::shared_ptr<ServerClock> _serverClock;
+    std::shared_ptr<ConfigOverrides> _configOverrides;
     unsigned long _nextRefreshMillis = 0;
 };
