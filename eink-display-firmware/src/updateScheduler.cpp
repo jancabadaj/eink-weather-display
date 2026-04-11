@@ -37,6 +37,8 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
         _nextRefreshMillis = millis() + nextRefreshDelay;
         logger.info("[UpdateScheduler] Night mode - no updates until %d UTC (current: %d UTC, %lus remaining)",
                     nightEnd, currentHour, nextRefreshDelay / 1000);
+
+        applyRateLimit();
         return false;
     }
     else
@@ -52,6 +54,8 @@ bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 
         _nextRefreshMillis = millis() + nextRefreshDelay;
         logger.info("[UpdateScheduler] Next refresh scheduled in %lu seconds", nextRefreshDelay / 1000);
+
+        applyRateLimit();
         return true;
     }
 }
@@ -64,6 +68,31 @@ int UpdateScheduler::getCurrentHour(unsigned long long currentUtcTimestampMs)
     gmtime_r(&currentTimeSec, &timeinfo);
 
     return timeinfo.tm_hour;
+}
+
+void UpdateScheduler::applyRateLimit()
+{
+    unsigned long now = millis();
+
+    // Sliding window - keep the last maxCallsPerInterval call timestamps in a ring buffer.
+    unsigned long oldest = _callTimestamps[_callTimestampIndex];
+    _callTimestamps[_callTimestampIndex] = now;
+    _callTimestampIndex = (_callTimestampIndex + 1) % Config::Schedule::maxCallsPerInterval;
+
+    unsigned long throttledMs = now + Config::Schedule::refreshIntervalMs;
+    // If the oldest entry is still within the window, all calls happened within window
+    if (oldest != 0 && now - oldest < Config::Schedule::refreshIntervalMs && _nextRefreshMillis < throttledMs)
+    {
+        logger.warning("[UpdateScheduler] Rate limit: %d calls within %lus window, throttling next refresh",
+                       Config::Schedule::maxCallsPerInterval, Config::Schedule::refreshIntervalMs / 1000);
+        _nextRefreshMillis = throttledMs;
+    }
+}
+
+void UpdateScheduler::scheduleRetry()
+{
+    _nextRefreshMillis = millis() + Config::Schedule::refreshIntervalMs;
+    logger.info("[UpdateScheduler] Retry scheduled in %lu seconds", Config::Schedule::refreshIntervalMs / 1000);
 }
 
 bool UpdateScheduler::isNightTime(int hour, int nightStart, int nightEnd)

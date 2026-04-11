@@ -5,9 +5,6 @@
 #include "webServer.h"
 #include "webUiTemplate.h"
 
-// API data - TODO: Move to somewhere else? - probably belongs to auth
-String uniqueState = "hello_test_unique"; // TODO: State - according to doc should be arbitrary but unique string
-
 static WiFiServer server(80); // Web server port number
 static String header;         // Variable to store the HTTP request
 
@@ -134,13 +131,12 @@ bool WebServer::handleRequest(WiFiClient &client)
     }
 
     // OAuth callback — state + code arrive as query params on the root path
-    String search = "GET /?state=" + uniqueState + "&code=";
-    int index = header.indexOf(search);
-    if (index >= 0)
+    String callbackState = parseQueryParam(header, "state");
+    String callbackCode = parseQueryParam(header, "code");
+    if (!callbackState.isEmpty() && !callbackCode.isEmpty())
     {
         Serial.println("[WebServer] Authentication callback received");
-        String code = header.substring(index + search.length(), header.indexOf(' ', index + search.length()));
-        _auth->login(code);
+        _auth->handleCallback(callbackState, callbackCode);
         return true;
     }
 
@@ -190,10 +186,7 @@ void WebServer::sendHomePage(WiFiClient &client)
     String nightDisplay = String(ns) + ":00&ndash;" + String(ne) + ":00 UTC " + nightTag;
 
     // Login URL (for button link)
-    String loginUrl = "https://api.netatmo.com/oauth2/authorize?client_id=" +
-                      String(Config::Secret::apiClientId) +
-                      "&redirect_uri=http://" + WiFi.localIP().toString() +
-                      "&scope=read_station&state=" + uniqueState;
+    String loginUrl = _auth->getLoginUrl("http://" + WiFi.localIP().toString());
 
     // Assemble template
     String html = FPSTR(WEB_UI_HTML);
@@ -222,7 +215,11 @@ String WebServer::formatDuration(unsigned long ms)
     s %= 60;
     unsigned long h = m / 60;
     m %= 60;
+    unsigned long d = h / 24;
+    h %= 24;
 
+    if (d > 0)
+        return String(d) + "d " + String(h) + "h " + String(m) + "m " + String(s) + "s";
     if (h > 0)
         return String(h) + "h " + String(m) + "m " + String(s) + "s";
     if (m > 0)

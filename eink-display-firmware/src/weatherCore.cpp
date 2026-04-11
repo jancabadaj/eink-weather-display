@@ -45,10 +45,10 @@ void WeatherCore::reloadData()
     bool refresh = _auth->refreshTokenIfNeeded();
     if (!refresh)
     {
-        logger.warning("[WeatherCore] Token refresh failed, cannot reload data");
-        _renderer->renderNetworkError();
-        _displayManager->refreshDisplay();
-        logger.info("[WeatherCore] Display set to network error");
+        logger.warning("[WeatherCore] Token refresh failed (consecutive failures: %d/%d)",
+                       _consecutiveFailures, Config::Schedule::maxConsecutiveFailures);
+        _consecutiveFailures++;
+        updateDisplayAndSchedule();
         return;
     }
 
@@ -142,12 +142,20 @@ void WeatherCore::updateDisplayAndSchedule()
     if (_consecutiveFailures >= Config::Schedule::maxConsecutiveFailures)
     {
         logger.error("[WeatherCore] Max consecutive failures reached! Clearing display and stopping updates.");
-        _displayManager->clearDisplay();
+        _renderer->renderNetworkError();
+        _displayManager->refreshDisplay();
         _updateLoopStopped = true;
         return;
     }
 
-    // Schedule next refresh
+    if (_consecutiveFailures > 0)
+    {
+        logger.info("[WeatherCore] Failure detected, retry after delay");
+        _scheduler->scheduleRetry();
+        return;
+    }
+
+    // Schedule next refresh based on data timestamp
     bool scheduled = _scheduler->scheduleRefresh(_weatherData.data_timestamp.count());
     bool dataChanged = (_weatherData.data_timestamp != _previousDataTimestamp);
     _previousDataTimestamp = _weatherData.data_timestamp;

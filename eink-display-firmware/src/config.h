@@ -52,6 +52,8 @@ namespace Config::Schedule
     constexpr unsigned long intervalOffsetMs = 30 * 1000;       // 30 seconds offset to avoid fetching too early
     // Maximum consecutive failures before stopping updates and clearing display
     constexpr int maxConsecutiveFailures = 3;
+    // Rate limit - max refreshes within one refreshInterval window before throttling (in case server returns wrong or stale data)
+    constexpr int maxCallsPerInterval = 3;
 }
 
 // =============================================================================

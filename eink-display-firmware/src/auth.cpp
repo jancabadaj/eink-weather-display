@@ -2,6 +2,8 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <esp_random.h>
 
 #include "auth.h"
 #include "config.h"
@@ -10,6 +12,34 @@
 static const char *NVS_NS = "auth";
 static const char *KEY_ACCESS = "access";
 static const char *KEY_REFRESH = "refresh";
+
+String Auth::generateState()
+{
+    char buf[17];
+    snprintf(buf, sizeof(buf), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+    return String(buf);
+}
+
+String Auth::getLoginUrl(const String &redirectUri)
+{
+    _state = generateState();
+    return String("https://api.netatmo.com/oauth2/authorize") +
+           "?client_id=" + String(Config::Secret::apiClientId) +
+           "&redirect_uri=" + redirectUri +
+           "&scope=read_station" +
+           "&state=" + _state;
+}
+
+bool Auth::handleCallback(const String &state, const String &code)
+{
+    if (_state.isEmpty() || state != _state)
+    {
+        logger.error("[Auth] OAuth state mismatch — possible CSRF");
+        return false;
+    }
+    _state = "";
+    return login(code);
+}
 
 bool Auth::login(const String &code)
 {
