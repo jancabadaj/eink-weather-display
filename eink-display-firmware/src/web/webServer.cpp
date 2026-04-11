@@ -153,7 +153,7 @@ void WebServer::sendHomePage(WiFiClient &client)
     // Token expiry
     String tokenExpiresHuman;
     long tokenRemainingMs = (long)(_auth->_tokenExpirationTimeMs - now);
-    if (!_auth->_loggedIn)
+    if (!_auth->isLoggedIn())
         tokenExpiresHuman = "N/A";
     else if (tokenRemainingMs <= 0)
         tokenExpiresHuman = "Expiring...";
@@ -193,7 +193,7 @@ void WebServer::sendHomePage(WiFiClient &client)
     html.replace("{{IP}}", WiFi.localIP().toString());
     html.replace("{{UPTIME_HUMAN}}", uptime);
     html.replace("{{MILLIS}}", String(now));
-    html.replace("{{LOGGED_IN}}", _auth->_loggedIn ? "Yes" : "No");
+    html.replace("{{LOGGED_IN}}", _auth->isLoggedIn() ? "Yes" : "No");
     html.replace("{{TOKEN_EXPIRES_HUMAN}}", tokenExpiresHuman);
     html.replace("{{TOKEN_EXPIRY_MS}}", String(_auth->_tokenExpirationTimeMs));
     html.replace("{{ACCESS_TOKEN}}", _auth->_accessToken.isEmpty() ? "(none)" : _auth->_accessToken);

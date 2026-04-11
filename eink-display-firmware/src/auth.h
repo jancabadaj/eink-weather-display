@@ -6,7 +6,7 @@ class Auth
 {
 public:
     String const &getAccessToken() const { return _accessToken; }
-    bool isLoggedIn() const { return _loggedIn; }
+    bool isLoggedIn() const { return !_refreshToken.isEmpty(); }
 
     String getLoginUrl(const String &redirectUri);
     bool handleCallback(const String &state, const String &code);
@@ -21,7 +21,6 @@ private:
     bool exchangeToken(const String &requestBody);
     static String generateState();
 
-    bool _loggedIn = false;
     String _accessToken;
     String _refreshToken;
     String _state;
