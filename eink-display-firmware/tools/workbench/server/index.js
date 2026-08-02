@@ -6,7 +6,7 @@ const { WebSocketServer } = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-const { buildPreview, render, DIST, SRC, HARNESS } = require('./build');
+const { buildPreview, render, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR } = require('./build');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -14,9 +14,19 @@ const app = express();
 const state = {
     mode: 'weather',
     frameVersion: 0,
-    build: { ok: false, errors: [], warnings: [] },
+    build: { ok: false, output: '', errorLines: [] },
     building: false,
     lastBuildMs: 0,
+    tests: {
+        ok: false,
+        output: '',
+        errorLines: [],
+        results: null,
+        lastRunMs: 0,
+        running: false,
+        autoRun: true, // "Rerun on save" checkbox
+    },
+    testsPanelOpen: false, // set by the client when the Tests tab is shown
 };
 
 let sockets = new Set();
@@ -29,8 +39,8 @@ function broadcast() {
 }
 
 function publicState() {
-    const { mode, frameVersion, build, building, lastBuildMs } = state;
-    return { mode, frameVersion, build, building, lastBuildMs };
+    const { mode, frameVersion, build, building, lastBuildMs, tests } = state;
+    return { mode, frameVersion, build, building, lastBuildMs, tests };
 }
 
 async function rebuild(reason) {
@@ -40,20 +50,71 @@ async function rebuild(reason) {
 
     const started = Date.now();
     const result = await buildPreview();
-    state.build = { ok: result.ok, errors: result.errors, warnings: result.warnings };
+    state.build = { ok: result.ok, output: result.output, errorLines: result.errorLines };
 
     if (result.ok) {
         const r = await render(state.mode);
         if (r.ok) state.frameVersion++;
-        else state.build = { ...state.build, ok: false, errors: [r.error] };
+        else state.build = { ...state.build, ok: false, output: r.error };
     }
 
     state.lastBuildMs = Date.now() - started;
-    state.building = false;
 
     const status = state.build.ok ? 'ok' : 'FAILED';
     console.log(`[build] ${reason} -> ${status} (${state.lastBuildMs}ms)`);
-    if (!state.build.ok) console.log(state.build.errors.join('\n'));
+    if (state.build.output.trim()) console.log(state.build.output.trimEnd());
+
+    broadcast();
+
+    // Only pay for the test build while someone is actually watching it.
+    if (state.testsPanelOpen && state.tests.autoRun) {
+        await rerunTests(reason);
+    }
+
+    state.building = false;
+    broadcast();
+}
+
+async function rerunTests(reason) {
+    if (state.tests.running) return;
+    state.tests = { ...state.tests, running: true };
+    broadcast();
+
+    const started = Date.now();
+    const built = await buildTests();
+
+    if (!built.ok) {
+        state.tests = {
+            ...state.tests,
+            ok: false,
+            output: built.output,
+            errorLines: built.errorLines,
+            results: null,
+            lastRunMs: Date.now() - started,
+            running: false,
+        };
+        console.log(`[tests] ${reason} -> BUILD FAILED`);
+        broadcast();
+        return;
+    }
+
+    const run = await runTests();
+    state.tests = {
+        ...state.tests,
+        ok: run.ok && run.results.failed === 0,
+        output: run.ok ? built.output : built.output + '\n' + run.error,
+        errorLines: run.ok ? [] : [run.error],
+        results: run.ok ? run.results : null,
+        lastRunMs: Date.now() - started,
+        running: false,
+    };
+
+    if (run.ok) {
+        const { passed, failed } = run.results;
+        console.log(`[tests] ${reason} -> ${failed ? failed + ' FAILED' : 'all passed'} (${passed + failed} tests, ${state.tests.lastRunMs}ms)`);
+    } else {
+        console.log(`[tests] ${reason} -> runner error: ${run.error}`);
+    }
 
     broadcast();
 }
@@ -77,10 +138,35 @@ app.post('/api/mode/:mode', async (req, res) => {
     if (state.build.ok) {
         const r = await render(state.mode);
         if (r.ok) state.frameVersion++;
-        else state.build = { ...state.build, ok: false, errors: [r.error] };
+        else state.build = { ...state.build, ok: false, output: r.error };
     }
     broadcast();
     res.json(publicState());
+});
+
+app.use(express.json());
+
+app.post('/api/tests/active', async (req, res) => {
+    const open = !!req.body.active;
+    const wasClosed = !state.testsPanelOpen;
+    state.testsPanelOpen = open;
+    res.json({ ok: true });
+
+    // First look at the panel: run once so it is never blank.
+    if (open && wasClosed && !state.tests.results && !state.tests.running) {
+        await rerunTests('tests panel opened');
+    }
+});
+
+app.post('/api/tests/autorun', (req, res) => {
+    state.tests = { ...state.tests, autoRun: !!req.body.enabled };
+    res.json({ ok: true });
+    broadcast();
+});
+
+app.post('/api/tests/run', async (req, res) => {
+    res.json({ ok: true });
+    await rerunTests('manual run');
 });
 
 const server = app.listen(PORT, () => {
@@ -101,7 +187,7 @@ function scheduleRebuild(reason) {
 }
 
 chokidar
-    .watch([SRC, HARNESS], { ignoreInitial: true })
+    .watch([SRC, HARNESS, TEST_DIR], { ignoreInitial: true })
     .on('all', (_event, file) => scheduleRebuild(path.basename(file)));
 
 rebuild('startup');

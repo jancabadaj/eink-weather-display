@@ -1,0 +1,25 @@
+<div class="tests-col">
+    <div class="toolbar">
+        <button id="tests-run">Run tests</button>
+        <label class="chk"><input type="checkbox" id="tests-auto" checked> Rerun on save</label>
+    </div>
+
+    <details class="card build-output" id="tests-output" style="margin-bottom: 16px">
+        <summary id="tests-output-summary"></summary>
+        <pre id="tests-output-text"></pre>
+    </details>
+
+    <div class="card">
+        <div id="tests-list"></div>
+    </div>
+</div>
+
+<aside>
+    <div class="card">
+        <h2 class="section">Suite</h2>
+        <div class="row"><span>Status</span><span id="t-status">&mdash;</span></div>
+        <div class="row"><span>Passed</span><span id="t-passed">&mdash;</span></div>
+        <div class="row"><span>Failed</span><span id="t-failed">&mdash;</span></div>
+        <div class="row"><span>Build + run</span><span id="t-duration">&mdash;</span></div>
+    </div>
+</aside>

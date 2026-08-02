@@ -15,7 +15,7 @@ const STD = '-std=gnu++17';
 // Arduino by design, never part of a host build.
 const EXCLUDED = ['main.cpp', 'platform/arduino'];
 
-// Temporarily excluded - references Arduino / ESP headers
+// Temporarily excluded - references Arduino / ESP headers.
 const NOT_YET_HOST_CLEAN = [
     'logger.cpp',
     'provider/auth.cpp',
@@ -46,46 +46,22 @@ function sourcesToCompile() {
 
 function run(cmd, args, opts = {}) {
     return new Promise((resolve) => {
-        execFile(cmd, args, { maxBuffer: 8 * 1024 * 1024, ...opts }, (err, stdout, stderr) =>
-            resolve({ ok: !err, code: err ? err.code : 0, stdout, stderr })
-        );
+        execFile(cmd, args, { maxBuffer: 8 * 1024 * 1024, ...opts }, (err, stdout, stderr) => {
+            const output = [stderr, stdout]
+                .filter(Boolean)
+                .join('')
+                .split(ROOT + '/')
+                .join('');
+            resolve({
+                ok: !err,
+                code: err ? (err.code ?? 1) : 0,
+                stdout,
+                output,
+                // Nothing is filtered out, but error lines are worth pulling to the top.
+                errorLines: output.split('\n').filter((l) => /(^|\s)error:/.test(l)),
+            });
+        });
     });
-}
-
-const DIAG_START = /^(\S.*?):(\d+):(\d+):\s+(error|warning|note):/;
-
-// Splits compiler output into diagnostics so a real error is never buried under
-// unrelated warnings. Paths are made repo-relative for readability.
-function parseDiagnostics(output) {
-    const errors = [];
-    const warnings = [];
-    let current = null;
-
-    const flush = () => {
-        if (!current) return;
-        const text = current.lines.join('\n');
-        (current.kind === 'error' ? errors : warnings).push(text);
-        current = null;
-    };
-
-    for (const raw of (output || '').split('\n')) {
-        const line = raw.replace(new RegExp(ROOT + '/', 'g'), '');
-        const m = line.match(DIAG_START);
-        if (m) {
-            // `note:` continues whatever diagnostic it belongs to
-            if (m[4] === 'note' && current) {
-                current.lines.push(line);
-                continue;
-            }
-            flush();
-            current = { kind: m[4], lines: [line] };
-        } else if (current) {
-            if (/^\d+ (warning|error)s? generated\.$/.test(line.trim())) flush();
-            else current.lines.push(line);
-        }
-    }
-    flush();
-    return { errors, warnings };
 }
 
 // Compiles the preview harness against every host-clean application source.
@@ -107,14 +83,7 @@ async function buildPreview() {
     ];
 
     const res = await run(CXX, args, { cwd: ROOT });
-    const diags = parseDiagnostics(res.stderr || res.stdout);
-
-    return {
-        ok: res.ok,
-        errors: diags.errors,
-        warnings: diags.warnings,
-        binary,
-    };
+    return { ok: res.ok, output: res.output, errorLines: res.errorLines, binary };
 }
 
 // Renders one screen. Leaves the previous frame in place on failure so the UI
@@ -127,10 +96,157 @@ async function render(mode) {
     const tmp = out + '.tmp';
     const res = await run(binary, [mode, tmp], { cwd: DIST });
     if (!res.ok) {
-        return { ok: false, error: res.stderr || `preview exited with ${res.code}` };
+        return { ok: false, error: res.output || `preview exited with ${res.code}` };
     }
     fs.renameSync(tmp, out);
     return { ok: true, error: '' };
 }
 
-module.exports = { buildPreview, render, DIST, SRC, HARNESS };
+const TEST_DIR = path.join(ROOT, 'test');
+
+// doctest is declared in platformio.ini's `native` env and fetched with
+// `pio pkg install -e native`, so the version is managed in one place and can
+// never reach the firmware build.
+const DOCTEST_INC = path.join(ROOT, '.pio', 'libdeps', 'native', 'doctest', 'doctest');
+
+function testSources() {
+    return fs
+        .readdirSync(TEST_DIR)
+        .filter((f) => f.endsWith('.cpp'))
+        .sort()
+        .map((f) => path.join(TEST_DIR, f));
+}
+
+function doctestMissing() {
+    return !fs.existsSync(path.join(DOCTEST_INC, 'doctest.h'));
+}
+
+// Compiles every *_test.cpp against the same host sources the preview uses.
+async function buildTests() {
+    fs.mkdirSync(DIST, { recursive: true });
+
+    if (doctestMissing()) {
+        return {
+            ok: false,
+            output:
+                'doctest not installed.\n\nRun:  pio pkg install -e native\n\n' +
+                `Expected header at ${path.relative(ROOT, DOCTEST_INC)}/doctest.h`,
+            errorLines: ['doctest not installed - run: pio pkg install -e native'],
+        };
+    }
+
+    const binary = path.join(DIST, 'tests');
+    const args = [
+        STD,
+        '-Wall',
+        '-Wextra',
+        `-I${SRC}`,
+        `-I${DOCTEST_INC}`,
+        `-DPROJECT_ROOT="${ROOT}"`,
+        ...testSources(),
+        ...sourcesToCompile().map((f) => path.join(SRC, f)),
+        '-o',
+        binary,
+    ];
+
+    const res = await run(CXX, args, { cwd: ROOT });
+    return { ok: res.ok, output: res.output, errorLines: res.errorLines, binary };
+}
+
+// --- doctest XML -----------------------------------------------------------
+// Without --success, doctest still emits every TestCase but only expands the
+// failing assertions, which is exactly what the panel needs.
+
+function attrs(s) {
+    const out = {};
+    for (const m of s.matchAll(/(\w+)="([^"]*)"/g)) out[m[1]] = m[2];
+    return out;
+}
+
+function unescapeXml(s) {
+    return (s || '')
+        .trim()
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&');
+}
+
+function tagText(body, tag) {
+    const m = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(body);
+    return m ? unescapeXml(m[1]) : '';
+}
+
+function parseDoctestXml(xml) {
+    const tests = [];
+
+    for (const c of xml.matchAll(/<TestCase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/TestCase>)/g)) {
+        const a = attrs(c[1]);
+        const body = c[2] || '';
+        const overall = attrs((/<OverallResultsAsserts([^>]*)\/>/.exec(body) || [, ''])[1]);
+
+        const failures = [];
+
+        for (const e of body.matchAll(/<Expression\b([^>]*)>([\s\S]*?)<\/Expression>/g)) {
+            const ea = attrs(e[1]);
+            if (ea.success === 'true') continue;
+            failures.push({
+                kind: ea.type || 'CHECK',
+                line: Number(ea.line || 0),
+                file: path.relative(ROOT, ea.filename || ''),
+                original: tagText(e[2], 'Original'),
+                expanded: tagText(e[2], 'Expanded'),
+            });
+        }
+
+        // FAIL(...) and friends arrive as Message rather than Expression.
+        for (const m of body.matchAll(/<Message\b([^>]*)>([\s\S]*?)<\/Message>/g)) {
+            const ma = attrs(m[1]);
+            failures.push({
+                kind: ma.type || 'FAIL',
+                line: Number(ma.line || 0),
+                file: path.relative(ROOT, ma.filename || ''),
+                original: tagText(m[2], 'Text'),
+                expanded: '',
+            });
+        }
+
+        const [suite, ...rest] = (a.name || '').split(': ');
+        tests.push({
+            suite: rest.length ? suite : '',
+            name: rest.length ? rest.join(': ') : a.name || '',
+            ok: overall.test_case_success === 'true' && failures.length === 0,
+            asserts: { passed: Number(overall.successes || 0), failed: Number(overall.failures || 0) },
+            failures,
+        });
+    }
+
+    const totals = attrs((/<OverallResultsTestCases([^>]*)\/>/.exec(xml) || [, ''])[1]);
+    return {
+        tests,
+        passed: Number(totals.successes || 0),
+        failed: Number(totals.failures || 0),
+    };
+}
+
+// Runs the suite. doctest exits with the failure count, so a non-zero exit is a
+// normal result rather than a tooling error.
+async function runTests() {
+    const binary = path.join(DIST, 'tests');
+    if (!fs.existsSync(binary)) return { ok: false, error: 'test binary not built' };
+
+    const started = Date.now();
+    const res = await run(binary, ['--reporters=xml'], { cwd: ROOT });
+    const xml = res.stdout || '';
+
+    if (!xml.includes('<doctest')) {
+        return { ok: false, error: res.output || 'test runner produced no output' };
+    }
+
+    const results = parseDoctestXml(xml);
+    results.durationMs = Date.now() - started;
+    return { ok: true, results };
+}
+
+module.exports = { buildPreview, render, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR };
