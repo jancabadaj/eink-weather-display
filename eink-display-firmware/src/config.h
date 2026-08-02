@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
-
 // Secret credentials - copy config.secret.template.h to config.secret.h and edit
 #include "config.secret.h"
 
