@@ -14,7 +14,7 @@ class WeatherCore
 {
 public:
     WeatherCore(std::shared_ptr<Auth> auth,
-                std::shared_ptr<WeatherRenderer> renderer,
+                std::shared_ptr<Screens> renderer,
                 std::shared_ptr<DisplayManager> displayManager,
                 std::shared_ptr<UpdateScheduler> scheduler,
                 std::shared_ptr<ServerClock> serverClock)
@@ -28,7 +28,7 @@ public:
 
 private:
     std::shared_ptr<Auth> _auth;
-    std::shared_ptr<WeatherRenderer> _renderer;
+    std::shared_ptr<Screens> _renderer;
     std::shared_ptr<DisplayManager> _displayManager;
     std::shared_ptr<ServerClock> _serverClock;
     std::shared_ptr<UpdateScheduler> _scheduler;

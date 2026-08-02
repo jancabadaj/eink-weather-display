@@ -22,7 +22,7 @@ std::shared_ptr<Auth> auth;
 std::shared_ptr<ServerClock> serverClock;
 std::shared_ptr<UpdateScheduler> updateScheduler;
 std::shared_ptr<DisplayManager> displayManager;
-std::shared_ptr<WeatherRenderer> renderer;
+std::shared_ptr<Screens> renderer;
 std::shared_ptr<WeatherCore> weatherCore;
 std::shared_ptr<WebServer> webServer;
 
@@ -42,7 +42,7 @@ void setup()
   auth = std::make_shared<Auth>();
   serverClock = std::make_shared<ServerClock>();
   displayManager = std::make_shared<DisplayManager>(imageData);
-  renderer = std::make_shared<WeatherRenderer>(imageData);
+  renderer = std::make_shared<Screens>(imageData);
   updateScheduler = std::make_shared<UpdateScheduler>(serverClock, configOverrides);
   weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager, updateScheduler, serverClock);
   webServer = std::make_shared<WebServer>(weatherCore, updateScheduler, displayManager, auth, configOverrides);

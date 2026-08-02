@@ -10,7 +10,7 @@
 #include "components/layoutComponent.hpp"
 #include "components/pressureChartComponent.hpp"
 
-void WeatherRenderer::renderWeather(const WeatherData &data, const PressureHistory &pressureHistory)
+void Screens::renderWeather(const WeatherData &data, const PressureHistory &pressureHistory)
 {
     ProportionalFont &font18 = Font18_Roboto_BoldCondensed_Proportional;
 
@@ -57,13 +57,13 @@ void WeatherRenderer::renderWeather(const WeatherData &data, const PressureHisto
     DrawUtils::drawString(_imageData, Config::Display::width / 2 + 10, 330, timeStr, &font18, Black);
 }
 
-void WeatherRenderer::renderNightModeIndicator()
+void Screens::renderNightModeIndicator()
 {
     DrawUtils::clearImage(_imageData);
     DrawUtils::drawShape(_imageData, 0, 0, &NightSky, Black);
 }
 
-void WeatherRenderer::renderNetworkError()
+void Screens::renderNetworkError()
 {
     DrawUtils::clearImage(_imageData);
     DrawUtils::drawShape(_imageData, Config::Display::width / 2 - NetworkError.width / 2,

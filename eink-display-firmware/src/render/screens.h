@@ -1,16 +1,14 @@
 #pragma once
 
-#include <memory>
-
 #include "../domain/weatherData.h"
 #include "../domain/pressureHistory.h"
 
 #include "color.h"
 
-class WeatherRenderer
+class Screens
 {
 public:
-    WeatherRenderer(uint8_t *imageData) : _imageData(imageData) {}
+    Screens(uint8_t *imageData) : _imageData(imageData) {}
 
     void renderWeather(const WeatherData &data, const PressureHistory &pressureHistory);
     void renderNightModeIndicator();

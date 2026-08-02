@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <memory>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -167,7 +168,7 @@ int main(int argc, char *argv[])
     }
 
     // Create renderer and call appropriate render method
-    auto renderer = std::make_unique<WeatherRenderer>(imageData);
+    auto renderer = std::make_unique<Screens>(imageData);
 
     if (renderMode == "night-mode")
     {
