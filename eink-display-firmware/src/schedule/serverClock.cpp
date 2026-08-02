@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "serverClock.h"
-#include "logger.h"
+#include "../logger.h"
 
 void ServerClock::syncTime(unsigned long syncTimeMillis, std::chrono::milliseconds serverTime)
 {

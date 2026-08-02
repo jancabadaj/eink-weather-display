@@ -21,8 +21,8 @@ const indexHtmlPath = path.join(__dirname, 'index.html');
 
 // Dependencies
 const dependencies = [
-    '../../src/weatherRenderer.cpp',
-    '../../src/draw/drawUtils.cpp',
+    '../../src/render/screens.cpp',
+    '../../src/render/drawUtils.cpp',
 ]
 
 // Ensure output directory exists

@@ -5,7 +5,7 @@
 #include <sstream>
 #include <cstdint>
 
-#include "../../src/weatherRenderer.h"
+#include "../../src/render/screens.h"
 
 // BMP file header structure
 #pragma pack(push, 1)

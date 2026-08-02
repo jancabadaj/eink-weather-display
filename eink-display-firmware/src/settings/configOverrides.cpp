@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "configOverrides.h"
-#include "logger.h"
+#include "../logger.h"
+#include "../config.h"
 
 static const char *NVS_NS = "cfg";
 static const char *KEY_VERSION = "version";

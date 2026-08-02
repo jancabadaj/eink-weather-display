@@ -6,13 +6,13 @@
 #include "DEV_Config.h"
 
 #include "config.h"
-#include "updateScheduler.h"
-#include "hw/displayManager.h"
-#include "auth.h"
+#include "schedule/updateScheduler.h"
+#include "platform/arduino/displayManager.h"
+#include "provider/auth.h"
 #include "web/webServer.h"
-#include "weatherRenderer.h"
+#include "render/screens.h"
 #include "weatherCore.h"
-#include "serverClock.h"
+#include "schedule/serverClock.h"
 #include "logger.h"
 
 UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */

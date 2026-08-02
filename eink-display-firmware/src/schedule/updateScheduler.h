@@ -2,8 +2,8 @@
 
 #include <memory>
 #include "serverClock.h"
-#include "configOverrides.h"
-#include "config.h"
+#include "../settings/configOverrides.h"
+#include "../config.h"
 
 class UpdateScheduler
 {

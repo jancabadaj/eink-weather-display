@@ -6,8 +6,8 @@
 #include <esp_random.h>
 
 #include "auth.h"
-#include "config.h"
-#include "logger.h"
+#include "../config.h"
+#include "../logger.h"
 
 static const char *NVS_NS = "auth";
 static const char *KEY_ACCESS = "access";

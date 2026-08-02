@@ -2,9 +2,10 @@
 
 #include <memory>
 
-#include "weatherData.h"
+#include "../domain/weatherData.h"
+#include "../domain/pressureHistory.h"
 
-#include "draw/color.h"
+#include "color.h"
 
 class WeatherRenderer
 {

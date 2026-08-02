@@ -5,7 +5,7 @@
 #include "utility/EPD_7in5_V2.h"
 
 #include "GUI_Paint.h"
-#include "../config.h"
+#include "../../config.h"
 
 // TODO: Paint_NewImage should be removed and DEV_Module_Init can be moved to main.cpp
 // Maybe this whole class can be deleted, or reworked (see TODO in refreshDisplay)

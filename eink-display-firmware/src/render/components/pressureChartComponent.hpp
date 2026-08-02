@@ -7,7 +7,7 @@
 #include "../fonts/font22-prop.h"
 #include "../fonts/font18-prop.h"
 #include "../../config.h"
-#include "../../weatherData.h"
+#include "../../domain/pressureHistory.h"
 
 class PressureChartComponent
 {

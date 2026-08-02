@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <memory>
 #include "updateScheduler.h"
-#include "logger.h"
-#include "config.h"
+#include "../logger.h"
+#include "../config.h"
 
 bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 {

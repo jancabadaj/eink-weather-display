@@ -1,11 +1,12 @@
 #pragma once
 
-#include "weatherRenderer.h"
-#include "weatherData.h"
-#include "hw/displayManager.h"
-#include "auth.h"
-#include "updateScheduler.h"
-#include "serverClock.h"
+#include "render/screens.h"
+#include "domain/weatherData.h"
+#include "domain/pressureHistory.h"
+#include "platform/arduino/displayManager.h"
+#include "provider/auth.h"
+#include "schedule/updateScheduler.h"
+#include "schedule/serverClock.h"
 #include <memory>
 #include <chrono>
 

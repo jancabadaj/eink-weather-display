@@ -4,7 +4,6 @@
 #include <memory>
 #include <algorithm>
 
-#include "../../config.h"
 #include "../drawUtils.h"
 #include "../shapes/layout.h"
 
