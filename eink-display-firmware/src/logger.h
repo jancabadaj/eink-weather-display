@@ -39,7 +39,7 @@ private:
 
     // Buffer for formatting messages
     static constexpr size_t LOG_BUFFER_SIZE = 512;
-    char _buffer[LOG_BUFFER_SIZE];
+    char _buffer[LOG_BUFFER_SIZE]{};
 };
 
 // Global logger instance

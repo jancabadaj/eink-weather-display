@@ -12,4 +12,3 @@ typedef struct
     uint16_t height;            // Height in pixels
     uint8_t firstChar;          // ASCII code of first character (usually 32 for space)
 } ProportionalFont;
-

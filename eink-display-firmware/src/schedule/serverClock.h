@@ -18,6 +18,6 @@ public:
 
 private:
     unsigned long _lastSyncMillis = 0;
-    unsigned long long _serverTimeAtSync;
+    unsigned long long _serverTimeAtSync = 0;
     bool _hasSynced = false;
 };

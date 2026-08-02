@@ -15,4 +15,4 @@ namespace Config::Secret
     // Create a custom API key for authentication
     constexpr const char *logDeploymentId = "";
     constexpr const char *logApiKey = "";
-}
+} // namespace Config::Secret

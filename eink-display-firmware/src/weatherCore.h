@@ -38,7 +38,7 @@ private:
     void updatePressureHistory();
     void fetchPressureHistory(unsigned long nowSec);
 
-    WeatherData _weatherData;
+    WeatherData _weatherData{};
     PressureHistory _pressureHistory;
     String _deviceId;
     std::chrono::milliseconds _previousDataTimestamp{0};

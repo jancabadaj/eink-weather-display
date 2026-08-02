@@ -8,7 +8,7 @@ namespace Config
     // Ensure persisted data is compatible with firmware version
     // Should be incremented on any change that requires clearing persisted overrides (ConfigOverrides)
     constexpr const char *version = "1";
-}
+} // namespace Config
 
 // =============================================================================
 // Display
@@ -20,7 +20,7 @@ namespace Config::Display
     constexpr int height = 480;
     constexpr int widthBytes = (width % 8 == 0) ? (width / 8) : (width / 8 + 1);
     constexpr int heightBytes = height;
-}
+} // namespace Config::Display
 
 // =============================================================================
 // Netatmo API
@@ -32,7 +32,7 @@ namespace Config::Api
     constexpr const char *dataUrl = "https://api.netatmo.com/api/getstationsdata";
     constexpr const char *historyUrl = "https://api.netatmo.com/api/getmeasure";
     constexpr unsigned long tokenRefreshMarginMs = 60000; // 1 minute before expiration
-}
+} // namespace Config::Api
 
 // =============================================================================
 // Update Schedule
@@ -51,7 +51,7 @@ namespace Config::Schedule
     constexpr int maxConsecutiveFailures = 3;
     // Rate limit - max refreshes within one refreshInterval window before throttling (in case server returns wrong or stale data)
     constexpr int maxCallsPerInterval = 3;
-}
+} // namespace Config::Schedule
 
 // =============================================================================
 // Pressure Chart
@@ -62,7 +62,7 @@ namespace Config::PressureChart
     constexpr int historyHours = 48;    // hours of history to display
     constexpr int barCount = 24;        // number of bars in the chart (downsampled from API data)
     constexpr float scaleRange = 20.0f; // fixed Y-axis range in hPa
-}
+} // namespace Config::PressureChart
 
 // =============================================================================
 // Logging

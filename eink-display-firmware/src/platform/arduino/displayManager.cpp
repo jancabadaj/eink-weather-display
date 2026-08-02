@@ -12,21 +12,21 @@
 
 void DisplayManager::init()
 {
-  DEV_Module_Init();
-  Paint_NewImage(_imageData, Config::Display::width, Config::Display::height, 0, WHITE);
+    DEV_Module_Init();
+    Paint_NewImage(_imageData, Config::Display::width, Config::Display::height, 0, WHITE);
 }
 
 // TODO: Figure out better way to init + sleep (smart pointers? init when creating and sleep when leaving scope)
 void DisplayManager::refreshDisplay()
 {
-  EPD_7IN5_V2_Init();
-  EPD_7IN5_V2_Display(_imageData);
-  EPD_7IN5_V2_Sleep();
+    EPD_7IN5_V2_Init();
+    EPD_7IN5_V2_Display(_imageData);
+    EPD_7IN5_V2_Sleep();
 }
 
 void DisplayManager::clearDisplay()
 {
-  EPD_7IN5_V2_Init();
-  EPD_7IN5_V2_Clear();
-  EPD_7IN5_V2_Sleep();
+    EPD_7IN5_V2_Init();
+    EPD_7IN5_V2_Clear();
+    EPD_7IN5_V2_Sleep();
 }
