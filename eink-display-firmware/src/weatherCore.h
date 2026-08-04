@@ -4,6 +4,7 @@
 #include "domain/weatherData.h"
 #include "domain/pressureHistory.h"
 #include "platform/arduino/displayManager.h"
+#include "platform/clock.h"
 #include "provider/auth.h"
 #include "schedule/updateScheduler.h"
 #include "schedule/serverClock.h"
@@ -13,12 +14,13 @@
 class WeatherCore
 {
 public:
-    WeatherCore(Auth &auth,
+    WeatherCore(Clock &clock,
+                Auth &auth,
                 Screens &renderer,
                 DisplayManager &displayManager,
                 UpdateScheduler &scheduler,
                 ServerClock &serverClock)
-        : _auth(auth), _renderer(renderer), _displayManager(displayManager), _serverClock(serverClock), _scheduler(scheduler) {}
+        : _clock(clock), _auth(auth), _renderer(renderer), _displayManager(displayManager), _serverClock(serverClock), _scheduler(scheduler) {}
 
     void loop();
     void reloadData();
@@ -27,6 +29,7 @@ public:
     bool isUpdateLoopStopped() const { return _updateLoopStopped; }
 
 private:
+    Clock &_clock;
     Auth &_auth;
     Screens &_renderer;
     DisplayManager &_displayManager;

@@ -11,12 +11,13 @@
 class WebServer
 {
 public:
-    WebServer(WeatherCore &weatherCore,
+    WebServer(Clock &clock,
+              WeatherCore &weatherCore,
               UpdateScheduler &scheduler,
               DisplayManager &displayManager,
               Auth &auth,
               ConfigOverrides &configOverrides)
-        : _weatherCore(weatherCore),
+        : _clock(clock), _weatherCore(weatherCore),
           _scheduler(scheduler),
           _displayManager(displayManager),
           _auth(auth),
@@ -34,10 +35,11 @@ private:
 
     void sendHomePage(WiFiClient &client);
 
-    static std::string formatDuration(unsigned long ms);
+    static std::string formatDuration(uint64_t ms);
     static std::string parseQueryParam(const std::string &header, const std::string &key);
     static bool isValidInt(const std::string &s);
 
+    Clock &_clock;
     WeatherCore &_weatherCore;
     UpdateScheduler &_scheduler;
     DisplayManager &_displayManager;

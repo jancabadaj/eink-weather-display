@@ -1,28 +1,28 @@
-#include <Arduino.h>
 #include "serverClock.h"
 #include "../logger.h"
 
-void ServerClock::syncTime(unsigned long syncTimeMillis, std::chrono::milliseconds serverTime)
+void ServerClock::syncTime(uint64_t syncUptimeMs, std::chrono::milliseconds serverTime)
 {
-    _lastSyncMillis = syncTimeMillis;
+    _lastSyncUptimeMs = syncUptimeMs;
     _serverTimeAtSync = serverTime.count();
     _hasSynced = true;
-    logger.debug("[ServerClock] Syncing time. Server time: %llu, Sync millis: %lu",
+    logger.debug("[ServerClock] Syncing time. Server time: %llu, Sync uptime: %llu",
                  _serverTimeAtSync,
-                 syncTimeMillis);
+                 syncUptimeMs);
 }
 
-unsigned long long ServerClock::getUtcTime() const
+uint64_t ServerClock::getUtcTime() const
 {
     if (!_hasSynced)
     {
-        logger.warning("[ServerClock] getUtcTime called but clock has not been synced yet. Returning millis(): %lu", millis());
-        return millis();
+        logger.warning("[ServerClock] getUtcTime called but clock has not been synced yet. Returning uptime: %llu",
+                       _clock.uptimeMs());
+        return _clock.uptimeMs();
     }
 
-    unsigned long elapsedSinceSync = millis() - _lastSyncMillis;
-    unsigned long long currentUtcMs = _serverTimeAtSync + elapsedSinceSync;
-    logger.debug("[ServerClock] Current UTC time calculated: %llu (server time: %llu, elapsed since sync: %lu)",
+    const uint64_t elapsedSinceSync = _clock.uptimeMs() - _lastSyncUptimeMs;
+    const uint64_t currentUtcMs = _serverTimeAtSync + elapsedSinceSync;
+    logger.debug("[ServerClock] Current UTC time calculated: %llu (server time: %llu, elapsed since sync: %llu)",
                  currentUtcMs, _serverTimeAtSync, elapsedSinceSync);
     return currentUtcMs;
 }

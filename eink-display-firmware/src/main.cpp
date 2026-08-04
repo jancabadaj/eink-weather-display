@@ -8,6 +8,9 @@
 
 #include "config.h"
 #include "schedule/updateScheduler.h"
+#include "platform/arduino/arduinoClock.h"
+#include "platform/arduino/serialSink.h"
+#include "platform/arduino/sheetsSink.h"
 #include "platform/arduino/displayManager.h"
 #include "provider/auth.h"
 #include "web/webServer.h"
@@ -22,6 +25,10 @@
 // is 8 KB (CONFIG_ARDUINO_LOOP_STACK_SIZE), and overflow immediately.
 static FrameBuffer frame;
 
+std::unique_ptr<ArduinoClock> systemClock;
+std::unique_ptr<SerialSink> serialSink;
+std::unique_ptr<SheetsSink> sheetsSink;
+
 std::unique_ptr<ConfigOverrides> configOverrides;
 std::unique_ptr<Auth> auth;
 std::unique_ptr<ServerClock> serverClock;
@@ -34,14 +41,15 @@ std::unique_ptr<WebServer> webServer;
 void setup()
 {
     // Initialize components
+    systemClock = std::make_unique<ArduinoClock>();
     configOverrides = std::make_unique<ConfigOverrides>();
-    auth = std::make_unique<Auth>();
-    serverClock = std::make_unique<ServerClock>();
+    auth = std::make_unique<Auth>(*systemClock);
+    serverClock = std::make_unique<ServerClock>(*systemClock);
     displayManager = std::make_unique<DisplayManager>(frame.data());
     renderer = std::make_unique<Screens>(frame.data());
-    updateScheduler = std::make_unique<UpdateScheduler>(*serverClock, *configOverrides);
-    weatherCore = std::make_unique<WeatherCore>(*auth, *renderer, *displayManager, *updateScheduler, *serverClock);
-    webServer = std::make_unique<WebServer>(*weatherCore, *updateScheduler, *displayManager, *auth, *configOverrides);
+    updateScheduler = std::make_unique<UpdateScheduler>(*systemClock, *serverClock, *configOverrides);
+    weatherCore = std::make_unique<WeatherCore>(*systemClock, *auth, *renderer, *displayManager, *updateScheduler, *serverClock);
+    webServer = std::make_unique<WebServer>(*systemClock, *weatherCore, *updateScheduler, *displayManager, *auth, *configOverrides);
 
     // Initialize serial and display
     displayManager->init();
@@ -64,8 +72,18 @@ void setup()
     auth->loadTokens();
 
     // Initialize logging
-    logger.init(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
-    logger.setLogLevel(Config::Log::minRemoteLevel);
+    serialSink = std::make_unique<SerialSink>();
+    logger.addSink(*serialSink, LogLevel::DEBUG);
+    sheetsSink = std::make_unique<SheetsSink>(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
+    if (sheetsSink->enabled())
+    {
+        logger.addSink(*sheetsSink, Config::Log::minRemoteLevel);
+        logger.info("[Logger] Google Sheets logging enabled");
+    }
+    else
+    {
+        logger.info("[Logger] Serial-only logging");
+    }
 
     webServer->init();
     logger.critical("System startup");

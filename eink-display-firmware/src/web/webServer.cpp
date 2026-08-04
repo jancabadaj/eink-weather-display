@@ -12,7 +12,7 @@ static WiFiServer server(80); // Web server port number
 static std::string header;    // Variable to store the HTTP request
 
 // Timeout handling
-static unsigned long previousTime = 0;
+static uint64_t previousTime = 0;
 static const long timeoutTime = 2000;
 
 static void replaceAll(std::string &content, const std::string &placeholder, const std::string &value)
@@ -35,10 +35,10 @@ void WebServer::loop()
     if (!client)
         return;
 
-    previousTime = millis();
+    previousTime = _clock.uptimeMs();
     std::string currentLine;
 
-    while (client.connected() && millis() - previousTime <= timeoutTime)
+    while (client.connected() && _clock.uptimeMs() - previousTime <= timeoutTime)
     {
         if (!client.available())
             continue;
@@ -156,20 +156,20 @@ bool WebServer::handleRequest(WiFiClient &client)
 
 void WebServer::sendHomePage(WiFiClient &client)
 {
-    unsigned long now = millis();
+    const uint64_t now = _clock.uptimeMs();
 
     // Uptime
     const std::string uptime = formatDuration(now);
 
     // Token expiry
     std::string tokenExpiresHuman;
-    long tokenRemainingMs = (long)(_auth._tokenExpirationTimeMs - now);
+    const int64_t tokenRemainingMs = (int64_t)(_auth._tokenExpirationTimeMs - now);
     if (!_auth.isLoggedIn())
         tokenExpiresHuman = "N/A";
     else if (tokenRemainingMs <= 0)
         tokenExpiresHuman = "Expiring...";
     else
-        tokenExpiresHuman = formatDuration((unsigned long)tokenRemainingMs);
+        tokenExpiresHuman = formatDuration((uint64_t)tokenRemainingMs);
 
     // Next refresh
     std::string nextRefreshHuman;
@@ -179,8 +179,8 @@ void WebServer::sendHomePage(WiFiClient &client)
     }
     else
     {
-        long untilRefreshMs = (long)(_scheduler.getNextScheduledRefreshMillis() - now);
-        nextRefreshHuman = untilRefreshMs <= 0 ? "Now" : "in " + formatDuration((unsigned long)untilRefreshMs);
+        const int64_t untilRefreshMs = (int64_t)(_scheduler.getNextScheduledRefreshMillis() - now);
+        nextRefreshHuman = untilRefreshMs <= 0 ? "Now" : "in " + formatDuration((uint64_t)untilRefreshMs);
     }
 
     // Stopped warning
@@ -219,14 +219,14 @@ void WebServer::sendHomePage(WiFiClient &client)
     client.print(html.c_str());
 }
 
-std::string WebServer::formatDuration(unsigned long ms)
+std::string WebServer::formatDuration(uint64_t ms)
 {
-    unsigned long s = ms / 1000;
-    unsigned long m = s / 60;
+    uint64_t s = ms / 1000;
+    uint64_t m = s / 60;
     s %= 60;
-    unsigned long h = m / 60;
+    uint64_t h = m / 60;
     m %= 60;
-    unsigned long d = h / 24;
+    uint64_t d = h / 24;
     h %= 24;
 
     if (d > 0)

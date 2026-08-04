@@ -1,32 +1,16 @@
 #include "logger.h"
-#include <WiFi.h>
-#include <HTTPClient.h>
+
+#include <cstdio>
 
 // Global logger instance
 Logger logger;
 
-void Logger::init(const char *deploymentId, const char *apiKey)
+void Logger::addSink(LogSink &sink, LogLevel minLevel)
 {
-    // Check if both credentials are provided
-    if (deploymentId != nullptr && apiKey != nullptr &&
-        strlen(deploymentId) > 0 && strlen(apiKey) > 0)
+    if (_sinkCount < maxSinks)
     {
-        _deploymentId = deploymentId;
-        _apiKey = apiKey;
-        _googleSheetsEnabled = true;
-        info("[Logger] Google Sheets logging enabled");
+        _sinks[_sinkCount++] = {&sink, minLevel};
     }
-    else
-    {
-        _googleSheetsEnabled = false;
-        info("[Logger] Serial-only logging (no Google Sheets credentials)");
-    }
-}
-
-void Logger::setLogLevel(LogLevel level)
-{
-    _minLevel = level;
-    info("[Logger] Log level set to %s", levelToString(level));
 }
 
 void Logger::debug(const char *format, ...)
@@ -79,65 +63,15 @@ void Logger::log(LogLevel level, const char *format, ...)
 
 void Logger::logInternal(LogLevel level, const char *format, va_list args)
 {
-    // Format the message
     vsnprintf(_buffer, LOG_BUFFER_SIZE, format, args);
 
-    // Always print to Serial
-    Serial.print("[");
-    Serial.print(levelToString(level));
-    Serial.print("] ");
-    Serial.println(_buffer);
-
-    // Send to Google Sheets if enabled and WiFi is connected
-    if (level >= _minLevel && _googleSheetsEnabled && WiFi.status() == WL_CONNECTED)
+    for (size_t i = 0; i < _sinkCount; i++)
     {
-        sendToGoogleSheets(_buffer, level);
-    }
-}
-
-void Logger::sendToGoogleSheets(const char *message, LogLevel level)
-{
-    HTTPClient http;
-
-    // Build Google Apps Script URL
-    const std::string url = "https://script.google.com/macros/s/" + _deploymentId + "/exec";
-
-    if (!http.begin(url.c_str()))
-    {
-        return; // Silently fail
-    }
-
-    // Set headers for form data
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    // URL encode the log message (basic encoding)
-    std::string encodedMessage;
-    encodedMessage.reserve(strlen(message) + 8);
-    for (const char *c = message; *c; c++)
-    {
-        switch (*c)
+        if (level >= _sinks[i].minLevel)
         {
-        case ' ':
-            encodedMessage += '+';
-            break;
-        case '\n':
-            encodedMessage += "%0A";
-            break;
-        case '\r':
-            encodedMessage += "%0D";
-            break;
-        default:
-            encodedMessage += *c;
+            _sinks[i].sink->write(level, _buffer);
         }
     }
-
-    const std::string postData = "key=" + _apiKey +
-                                 "&log=" + encodedMessage +
-                                 "&level=" + levelToString(level);
-
-    // Send POST request (non-blocking, fire and forget)
-    http.POST(postData.c_str());
-    http.end();
 }
 
 const char *Logger::levelToString(LogLevel level)

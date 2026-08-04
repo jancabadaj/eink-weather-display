@@ -58,12 +58,12 @@ bool Auth::login(const std::string &code)
 
 bool Auth::refreshTokenIfNeeded()
 {
-    // Refresh if logged in and token expires within 60 seconds
-    // Use subtraction with signed cast to avoid millis() overflow at ULONG_MAX (~49.7 days)
-    if (isLoggedIn() && (long)(_tokenExpirationTimeMs - millis()) <= 60000)
+    // Refresh if logged in and the token expires within the margin
+    const uint64_t now = _clock.uptimeMs();
+    if (isLoggedIn() && _tokenExpirationTimeMs <= now + Config::Api::tokenRefreshMarginMs)
     {
-        logger.info("[Auth] Refreshing token (expiration at %lu, current millis %lu)",
-                    _tokenExpirationTimeMs, millis());
+        logger.info("[Auth] Refreshing token (expiration at %llu, current uptime %llu)",
+                    _tokenExpirationTimeMs, now);
 
         const std::string requestBody =
             std::string("grant_type=refresh_token") +
@@ -113,7 +113,7 @@ bool Auth::exchangeToken(const std::string &requestBody)
         long expires_in = doc["expires_in"];
         _accessToken = access_token;
         _refreshToken = refresh_token;
-        _tokenExpirationTimeMs = millis() + (unsigned long)expires_in * 1000UL; // expires_in is in seconds
+        _tokenExpirationTimeMs = _clock.uptimeMs() + (uint64_t)expires_in * 1000ULL; // expires_in is in seconds
         logger.info("[Auth] Token exchange successful, expires in %lds", expires_in);
 
         saveTokens();
@@ -142,7 +142,7 @@ void Auth::loadTokens()
 
     _accessToken = access;
     _refreshToken = refresh;
-    _tokenExpirationTimeMs = millis(); // We don't know the exact expiry, so force a refresh on first use
+    _tokenExpirationTimeMs = _clock.uptimeMs(); // Exact expiry is unknown, so force a refresh on first use
     logger.info("[Auth] Tokens loaded from storage, will refresh on first use");
 }
 

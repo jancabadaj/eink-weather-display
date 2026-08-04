@@ -1,23 +1,26 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 
+#include "../platform/clock.h"
+
+// Extrapolates UTC time based on the last known server time and the local uptime
 class ServerClock
 {
 public:
-    ServerClock() = default;
+    explicit ServerClock(Clock &clock) : _clock(clock) {}
 
-    // Sync the clock with server time
-    // @param syncTimeMillis - The millis() value when the refresh was attempted
-    // @param serverTime - The server's UTC timestamp
-    void syncTime(unsigned long syncTimeMillis, std::chrono::milliseconds serverTime);
+    // @param syncUptimeMs uptime when the request that carried serverTime was sent
+    // @param serverTime  the server's UTC timestamp
+    void syncTime(uint64_t syncUptimeMs, std::chrono::milliseconds serverTime);
 
-    // Get current UTC time in milliseconds since epoch
-    // Returns calculated UTC timestamp based on last sync, or millis() if never synced
-    unsigned long long getUtcTime() const;
+    // Current UTC in ms since epoch, or uptime if never synced.
+    uint64_t getUtcTime() const;
 
 private:
-    unsigned long _lastSyncMillis = 0;
-    unsigned long long _serverTimeAtSync = 0;
+    Clock &_clock;
+    uint64_t _lastSyncUptimeMs = 0;
+    uint64_t _serverTimeAtSync = 0;
     bool _hasSynced = false;
 };

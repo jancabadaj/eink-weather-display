@@ -22,8 +22,8 @@ void WeatherCore::loop()
     }
 
     // Check if it's time for scheduled refresh
-    unsigned long nextRefreshMillis = _scheduler.getNextScheduledRefreshMillis();
-    if (millis() >= nextRefreshMillis)
+    const uint64_t nextRefreshMillis = _scheduler.getNextScheduledRefreshMillis();
+    if (_clock.uptimeMs() >= nextRefreshMillis)
     {
         logger.info("[WeatherCore] Scheduled refresh triggered");
         reloadData();
@@ -57,7 +57,7 @@ void WeatherCore::reloadData()
     http.addHeader("Authorization", ("Bearer " + _auth.getAccessToken()).c_str());
 
     // Send HTTP GET request
-    unsigned long requestStartMillis = millis();
+    const uint64_t requestStartMillis = _clock.uptimeMs();
     int httpResponseCode = http.GET();
     if (httpResponseCode == 200)
     {

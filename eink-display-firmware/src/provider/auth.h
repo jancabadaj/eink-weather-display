@@ -1,10 +1,15 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+
+#include "../platform/clock.h"
 
 class Auth
 {
 public:
+    explicit Auth(Clock &clock) : _clock(clock) {}
+
     const std::string &getAccessToken() const { return _accessToken; }
     bool isLoggedIn() const { return !_refreshToken.empty(); }
 
@@ -21,10 +26,11 @@ private:
     bool exchangeToken(const std::string &requestBody);
     static std::string generateState();
 
+    Clock &_clock;
     std::string _accessToken;
     std::string _refreshToken;
     std::string _state;
-    unsigned long _tokenExpirationTimeMs = 0;
+    uint64_t _tokenExpirationTimeMs = 0;
 
     friend class WebServer;
 };
