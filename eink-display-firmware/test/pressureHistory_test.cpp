@@ -106,8 +106,8 @@ TEST_CASE("PressureHistory: noGapWithinWindow")
     PressureHistory h;
     h.addReading(base, 1000.0f);
 
-    CHECK(!h.hasGap(base + 3600, 3600));      // exactly at the limit is not a gap
-    CHECK(h.hasGap(base + 3601, 3600));       // one second past is
+    CHECK(!h.hasGap(base + 3600, 3600)); // exactly at the limit is not a gap
+    CHECK(h.hasGap(base + 3601, 3600));  // one second past is
 }
 
 TEST_CASE("PressureHistory: clearResetsCount")

@@ -9,7 +9,7 @@
 #include "webUiTemplate.h"
 
 static WiFiServer server(80); // Web server port number
-static std::string header; // Variable to store the HTTP request
+static std::string header;    // Variable to store the HTTP request
 
 // Timeout handling
 static unsigned long previousTime = 0;
@@ -91,29 +91,29 @@ bool WebServer::handleRequest(WiFiClient &client)
     if (header.find("GET /display/restart") != std::string::npos)
     {
         Serial.println("[WebServer] Restart auto updates requested");
-        _weatherCore->restartUpdateLoop();
+        _weatherCore.restartUpdateLoop();
         return true;
     }
 
     if (header.find("GET /display/clear") != std::string::npos)
     {
         Serial.println("[WebServer] Clear display requested");
-        _displayManager->clearDisplay();
+        _displayManager.clearDisplay();
         return true;
     }
 
     if (header.find("GET /data/get") != std::string::npos)
     {
         Serial.println("[WebServer] Manual data refresh requested");
-        _weatherCore->reloadData();
+        _weatherCore.reloadData();
         return true;
     }
 
     if (header.find("GET /config/reset") != std::string::npos)
     {
         Serial.println("[WebServer] Config reset requested");
-        _configOverrides->resetAll();
-        _weatherCore->restartUpdateLoop(); // apply immediately
+        _configOverrides.resetAll();
+        _weatherCore.restartUpdateLoop(); // apply immediately
         return true;
     }
 
@@ -128,16 +128,16 @@ bool WebServer::handleRequest(WiFiClient &client)
         {
             const long v = strtol(nightStartStr.c_str(), nullptr, 10);
             if (v >= 0 && v <= 23)
-                _configOverrides->setNightStartHour(static_cast<int>(v));
+                _configOverrides.setNightStartHour(static_cast<int>(v));
         }
         if (isValidInt(nightEndStr))
         {
             const long v = strtol(nightEndStr.c_str(), nullptr, 10);
             if (v >= 0 && v <= 23)
-                _configOverrides->setNightEndHour(static_cast<int>(v));
+                _configOverrides.setNightEndHour(static_cast<int>(v));
         }
 
-        _weatherCore->restartUpdateLoop(); // apply immediately
+        _weatherCore.restartUpdateLoop(); // apply immediately
         return true;
     }
 
@@ -147,7 +147,7 @@ bool WebServer::handleRequest(WiFiClient &client)
     if (!callbackState.empty() && !callbackCode.empty())
     {
         Serial.println("[WebServer] Authentication callback received");
-        _auth->handleCallback(callbackState, callbackCode);
+        _auth.handleCallback(callbackState, callbackCode);
         return true;
     }
 
@@ -163,8 +163,8 @@ void WebServer::sendHomePage(WiFiClient &client)
 
     // Token expiry
     std::string tokenExpiresHuman;
-    long tokenRemainingMs = (long)(_auth->_tokenExpirationTimeMs - now);
-    if (!_auth->isLoggedIn())
+    long tokenRemainingMs = (long)(_auth._tokenExpirationTimeMs - now);
+    if (!_auth.isLoggedIn())
         tokenExpiresHuman = "N/A";
     else if (tokenRemainingMs <= 0)
         tokenExpiresHuman = "Expiring...";
@@ -173,42 +173,42 @@ void WebServer::sendHomePage(WiFiClient &client)
 
     // Next refresh
     std::string nextRefreshHuman;
-    if (_weatherCore->isUpdateLoopStopped())
+    if (_weatherCore.isUpdateLoopStopped())
     {
         nextRefreshHuman = "Stopped";
     }
     else
     {
-        long untilRefreshMs = (long)(_scheduler->getNextScheduledRefreshMillis() - now);
+        long untilRefreshMs = (long)(_scheduler.getNextScheduledRefreshMillis() - now);
         nextRefreshHuman = untilRefreshMs <= 0 ? "Now" : "in " + formatDuration((unsigned long)untilRefreshMs);
     }
 
     // Stopped warning
-    const std::string stoppedWarning = _weatherCore->isUpdateLoopStopped()
+    const std::string stoppedWarning = _weatherCore.isUpdateLoopStopped()
                                            ? "<p class=\"tag-warn\">&#9888; Auto-update stopped after consecutive failures. Use &ldquo;Restart auto-update&rdquo; to resume.</p>"
                                            : "";
 
     // Night hours
-    int ns = _configOverrides->getNightStartHour();
-    int ne = _configOverrides->getNightEndHour();
-    const std::string nightTag = _configOverrides->hasNightOverride()
+    int ns = _configOverrides.getNightStartHour();
+    int ne = _configOverrides.getNightEndHour();
+    const std::string nightTag = _configOverrides.hasNightOverride()
                                      ? "<span class=\"tag-override\">(override)</span>"
                                      : "<span class=\"tag-default\">(default)</span>";
     const std::string nightDisplay = std::to_string(ns) + ":00&ndash;" + std::to_string(ne) + ":00 UTC " + nightTag;
 
     // Login URL (for button link)
-    const std::string loginUrl = _auth->getLoginUrl("http://" + std::string(WiFi.localIP().toString().c_str()));
+    const std::string loginUrl = _auth.getLoginUrl("http://" + std::string(WiFi.localIP().toString().c_str()));
 
     // Assemble template
     std::string html = WEB_UI_HTML;
     replaceAll(html, "{{IP}}", WiFi.localIP().toString().c_str());
     replaceAll(html, "{{UPTIME_HUMAN}}", uptime);
     replaceAll(html, "{{MILLIS}}", std::to_string(now));
-    replaceAll(html, "{{LOGGED_IN}}", _auth->isLoggedIn() ? "Yes" : "No");
+    replaceAll(html, "{{LOGGED_IN}}", _auth.isLoggedIn() ? "Yes" : "No");
     replaceAll(html, "{{TOKEN_EXPIRES_HUMAN}}", tokenExpiresHuman);
-    replaceAll(html, "{{TOKEN_EXPIRY_MS}}", std::to_string(_auth->_tokenExpirationTimeMs));
-    replaceAll(html, "{{ACCESS_TOKEN}}", _auth->_accessToken.empty() ? "(none)" : _auth->_accessToken);
-    replaceAll(html, "{{REFRESH_TOKEN}}", _auth->_refreshToken.empty() ? "(none)" : _auth->_refreshToken);
+    replaceAll(html, "{{TOKEN_EXPIRY_MS}}", std::to_string(_auth._tokenExpirationTimeMs));
+    replaceAll(html, "{{ACCESS_TOKEN}}", _auth._accessToken.empty() ? "(none)" : _auth._accessToken);
+    replaceAll(html, "{{REFRESH_TOKEN}}", _auth._refreshToken.empty() ? "(none)" : _auth._refreshToken);
     replaceAll(html, "{{UPDATES_STOPPED}}", stoppedWarning);
     replaceAll(html, "{{NEXT_REFRESH_HUMAN}}", nextRefreshHuman);
     replaceAll(html, "{{NIGHT_DISPLAY}}", nightDisplay);

@@ -7,18 +7,17 @@
 #include "provider/auth.h"
 #include "schedule/updateScheduler.h"
 #include "schedule/serverClock.h"
-#include <memory>
 #include <string>
 #include <chrono>
 
 class WeatherCore
 {
 public:
-    WeatherCore(std::shared_ptr<Auth> auth,
-                std::shared_ptr<Screens> renderer,
-                std::shared_ptr<DisplayManager> displayManager,
-                std::shared_ptr<UpdateScheduler> scheduler,
-                std::shared_ptr<ServerClock> serverClock)
+    WeatherCore(Auth &auth,
+                Screens &renderer,
+                DisplayManager &displayManager,
+                UpdateScheduler &scheduler,
+                ServerClock &serverClock)
         : _auth(auth), _renderer(renderer), _displayManager(displayManager), _serverClock(serverClock), _scheduler(scheduler) {}
 
     void loop();
@@ -28,11 +27,11 @@ public:
     bool isUpdateLoopStopped() const { return _updateLoopStopped; }
 
 private:
-    std::shared_ptr<Auth> _auth;
-    std::shared_ptr<Screens> _renderer;
-    std::shared_ptr<DisplayManager> _displayManager;
-    std::shared_ptr<ServerClock> _serverClock;
-    std::shared_ptr<UpdateScheduler> _scheduler;
+    Auth &_auth;
+    Screens &_renderer;
+    DisplayManager &_displayManager;
+    ServerClock &_serverClock;
+    UpdateScheduler &_scheduler;
 
     void parseAndUpdateWeatherData(const std::string &payload);
     void updateDisplayAndSchedule();

@@ -28,7 +28,7 @@ SortIncludes: false
 IncludeBlocks: Preserve
 
 AlignAfterOpenBracket: Align
-AlignTrailingComments: Leave
+AlignTrailingComments: Always
 BreakConstructorInitializers: BeforeColon
 FixNamespaceComments: true
 IndentCaseLabels: false

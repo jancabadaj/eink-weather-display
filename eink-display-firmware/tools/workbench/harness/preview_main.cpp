@@ -9,6 +9,7 @@
 #include <string>
 
 #include "config.h"
+#include "render/frameBuffer.h"
 #include "render/screens.h"
 
 #include "bmp.h"
@@ -48,8 +49,8 @@ int main(int argc, char **argv)
     const std::string mode = argc > 1 ? argv[1] : "weather";
     const char *outPath = argc > 2 ? argv[2] : "frame.bmp";
 
-    static uint8_t frame[Config::Display::widthBytes * Config::Display::heightBytes];
-    Screens screens(frame);
+    static FrameBuffer frame;
+    Screens screens(frame.data());
 
     if (mode == "night-mode")
     {
@@ -64,5 +65,5 @@ int main(int argc, char **argv)
         renderSampleWeather(screens);
     }
 
-    return bmp::write1Bit(outPath, frame, Config::Display::width, Config::Display::height) ? 0 : 1;
+    return bmp::write1Bit(outPath, frame.data(), Config::Display::width, Config::Display::height) ? 0 : 1;
 }

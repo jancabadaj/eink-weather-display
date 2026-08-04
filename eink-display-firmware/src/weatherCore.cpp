@@ -8,7 +8,7 @@
 
 void WeatherCore::loop()
 {
-    if (_updateLoopStopped || !_auth->isLoggedIn())
+    if (_updateLoopStopped || !_auth.isLoggedIn())
     {
         return;
     }
@@ -22,7 +22,7 @@ void WeatherCore::loop()
     }
 
     // Check if it's time for scheduled refresh
-    unsigned long nextRefreshMillis = _scheduler->getNextScheduledRefreshMillis();
+    unsigned long nextRefreshMillis = _scheduler.getNextScheduledRefreshMillis();
     if (millis() >= nextRefreshMillis)
     {
         logger.info("[WeatherCore] Scheduled refresh triggered");
@@ -42,7 +42,7 @@ void WeatherCore::restartUpdateLoop()
 
 void WeatherCore::reloadData()
 {
-    bool refresh = _auth->refreshTokenIfNeeded();
+    bool refresh = _auth.refreshTokenIfNeeded();
     if (!refresh)
     {
         logger.warning("[WeatherCore] Token refresh failed (consecutive failures: %d/%d)",
@@ -54,7 +54,7 @@ void WeatherCore::reloadData()
 
     HTTPClient http;
     http.begin(Config::Api::dataUrl);
-    http.addHeader("Authorization", ("Bearer " + _auth->getAccessToken()).c_str());
+    http.addHeader("Authorization", ("Bearer " + _auth.getAccessToken()).c_str());
 
     // Send HTTP GET request
     unsigned long requestStartMillis = millis();
@@ -66,7 +66,7 @@ void WeatherCore::reloadData()
 
         parseAndUpdateWeatherData(payload);
 
-        _serverClock->syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
+        _serverClock.syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
 
         updatePressureHistory();
 
@@ -142,8 +142,8 @@ void WeatherCore::updateDisplayAndSchedule()
     if (_consecutiveFailures >= Config::Schedule::maxConsecutiveFailures)
     {
         logger.error("[WeatherCore] Max consecutive failures reached! Clearing display and stopping updates.");
-        _renderer->renderNetworkError();
-        _displayManager->refreshDisplay();
+        _renderer.renderNetworkError();
+        _displayManager.refreshDisplay();
         _updateLoopStopped = true;
         return;
     }
@@ -151,12 +151,12 @@ void WeatherCore::updateDisplayAndSchedule()
     if (_consecutiveFailures > 0)
     {
         logger.info("[WeatherCore] Failure detected, retry after delay");
-        _scheduler->scheduleRetry();
+        _scheduler.scheduleRetry();
         return;
     }
 
     // Schedule next refresh based on data timestamp
-    bool scheduled = _scheduler->scheduleRefresh(_weatherData.data_timestamp.count());
+    bool scheduled = _scheduler.scheduleRefresh(_weatherData.data_timestamp.count());
     bool dataChanged = (_weatherData.data_timestamp != _previousDataTimestamp);
     _previousDataTimestamp = _weatherData.data_timestamp;
 
@@ -164,8 +164,8 @@ void WeatherCore::updateDisplayAndSchedule()
     {
         // Night mode - always update display to show night mode indicator
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
-        _renderer->renderNightModeIndicator();
-        _displayManager->refreshDisplay();
+        _renderer.renderNightModeIndicator();
+        _displayManager.refreshDisplay();
         logger.info("[WeatherCore] Display set to night mode");
     }
     else
@@ -182,8 +182,8 @@ void WeatherCore::updateDisplayAndSchedule()
         logger.info("[WeatherCore] Updating display. [Data timestamp: %lld, Server time: %lld]",
                     _weatherData.data_timestamp.count(),
                     _weatherData.retrieval_timestamp.count());
-        _renderer->renderWeather(_weatherData, _pressureHistory);
-        _displayManager->refreshDisplay();
+        _renderer.renderWeather(_weatherData, _pressureHistory);
+        _displayManager.refreshDisplay();
         logger.info("[WeatherCore] Display updated");
     }
 }
@@ -217,7 +217,7 @@ void WeatherCore::fetchPressureHistory(unsigned long nowSec)
 
     HTTPClient http;
     http.begin(url.c_str());
-    http.addHeader("Authorization", ("Bearer " + _auth->getAccessToken()).c_str());
+    http.addHeader("Authorization", ("Bearer " + _auth.getAccessToken()).c_str());
 
     int httpResponseCode = http.GET();
     if (httpResponseCode != 200)

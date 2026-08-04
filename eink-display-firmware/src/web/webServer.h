@@ -11,11 +11,11 @@
 class WebServer
 {
 public:
-    WebServer(std::shared_ptr<WeatherCore> weatherCore,
-              std::shared_ptr<UpdateScheduler> scheduler,
-              std::shared_ptr<DisplayManager> displayManager,
-              std::shared_ptr<Auth> auth,
-              std::shared_ptr<ConfigOverrides> configOverrides)
+    WebServer(WeatherCore &weatherCore,
+              UpdateScheduler &scheduler,
+              DisplayManager &displayManager,
+              Auth &auth,
+              ConfigOverrides &configOverrides)
         : _weatherCore(weatherCore),
           _scheduler(scheduler),
           _displayManager(displayManager),
@@ -38,9 +38,9 @@ private:
     static std::string parseQueryParam(const std::string &header, const std::string &key);
     static bool isValidInt(const std::string &s);
 
-    std::shared_ptr<WeatherCore> _weatherCore;
-    std::shared_ptr<UpdateScheduler> _scheduler;
-    std::shared_ptr<DisplayManager> _displayManager;
-    std::shared_ptr<Auth> _auth;
-    std::shared_ptr<ConfigOverrides> _configOverrides;
+    WeatherCore &_weatherCore;
+    UpdateScheduler &_scheduler;
+    DisplayManager &_displayManager;
+    Auth &_auth;
+    ConfigOverrides &_configOverrides;
 };

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <memory>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_sleep.h>
@@ -10,44 +11,39 @@
 #include "platform/arduino/displayManager.h"
 #include "provider/auth.h"
 #include "web/webServer.h"
+#include "render/frameBuffer.h"
 #include "render/screens.h"
 #include "weatherCore.h"
 #include "schedule/serverClock.h"
 #include "logger.h"
 
-UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
+// Must stay a file-scope static: at 48 KB this lands in .bss, where the linker
+// reserves it up front. As a local it would go on the loop task's stack, which
+// is 8 KB (CONFIG_ARDUINO_LOOP_STACK_SIZE), and overflow immediately.
+static FrameBuffer frame;
 
-std::shared_ptr<ConfigOverrides> configOverrides;
-std::shared_ptr<Auth> auth;
-std::shared_ptr<ServerClock> serverClock;
-std::shared_ptr<UpdateScheduler> updateScheduler;
-std::shared_ptr<DisplayManager> displayManager;
-std::shared_ptr<Screens> renderer;
-std::shared_ptr<WeatherCore> weatherCore;
-std::shared_ptr<WebServer> webServer;
+std::unique_ptr<ConfigOverrides> configOverrides;
+std::unique_ptr<Auth> auth;
+std::unique_ptr<ServerClock> serverClock;
+std::unique_ptr<UpdateScheduler> updateScheduler;
+std::unique_ptr<DisplayManager> displayManager;
+std::unique_ptr<Screens> renderer;
+std::unique_ptr<WeatherCore> weatherCore;
+std::unique_ptr<WebServer> webServer;
 
 void setup()
 {
-  // Create a new image cache
-    uint16_t imageSize = Config::Display::widthBytes * Config::Display::heightBytes;
-    if ((imageData = (uint8_t *)malloc(imageSize)) == NULL)
-    {
-        Serial.println("Failed to allocate memory...");
-        while (1)
-            ;
-    }
+    // Initialize components
+    configOverrides = std::make_unique<ConfigOverrides>();
+    auth = std::make_unique<Auth>();
+    serverClock = std::make_unique<ServerClock>();
+    displayManager = std::make_unique<DisplayManager>(frame.data());
+    renderer = std::make_unique<Screens>(frame.data());
+    updateScheduler = std::make_unique<UpdateScheduler>(*serverClock, *configOverrides);
+    weatherCore = std::make_unique<WeatherCore>(*auth, *renderer, *displayManager, *updateScheduler, *serverClock);
+    webServer = std::make_unique<WebServer>(*weatherCore, *updateScheduler, *displayManager, *auth, *configOverrides);
 
-  // Initialize components
-    configOverrides = std::make_shared<ConfigOverrides>();
-    auth = std::make_shared<Auth>();
-    serverClock = std::make_shared<ServerClock>();
-    displayManager = std::make_shared<DisplayManager>(imageData);
-    renderer = std::make_shared<Screens>(imageData);
-    updateScheduler = std::make_shared<UpdateScheduler>(serverClock, configOverrides);
-    weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager, updateScheduler, serverClock);
-    webServer = std::make_shared<WebServer>(weatherCore, updateScheduler, displayManager, auth, configOverrides);
-
-  // Initialize serial and display - must be first to allocate memory for imageData
+    // Initialize serial and display
     displayManager->init();
     displayManager->clearDisplay();
 
@@ -63,11 +59,11 @@ void setup()
     Serial.print("WiFi connected. IP address: ");
     Serial.println(WiFi.localIP());
 
-  // Load persisted config overrides and tokens
+    // Load persisted config overrides and tokens
     configOverrides->init();
     auth->loadTokens();
 
-  // Initialize logging
+    // Initialize logging
     logger.init(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
     logger.setLogLevel(Config::Log::minRemoteLevel);
 
@@ -80,8 +76,8 @@ void loop()
     webServer->loop();
     weatherCore->loop();
 
-  // TODO: light sleep causes issues - random reboots
-  // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
-  // esp_light_sleep_start();
+    // TODO: light sleep causes issues - random reboots
+    // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
+    // esp_light_sleep_start();
     delay(1000);
 }

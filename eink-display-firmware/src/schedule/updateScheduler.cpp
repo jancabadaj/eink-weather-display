@@ -1,19 +1,18 @@
 #include <Arduino.h>
-#include <memory>
 #include "updateScheduler.h"
 #include "../logger.h"
 #include "../config.h"
 
 bool UpdateScheduler::scheduleRefresh(unsigned long long dataUtcTimestampMs)
 {
-    unsigned long long currentUtcTimestampMs = _serverClock->getUtcTime();
+    unsigned long long currentUtcTimestampMs = _serverClock.getUtcTime();
     logger.info("[UpdateScheduler] Calculating next refresh delay. Current UTC: %llu, Data timestamp: %llu, Age: %llus",
                 currentUtcTimestampMs, dataUtcTimestampMs,
                 (currentUtcTimestampMs - dataUtcTimestampMs) / 1000);
 
     int currentHour = getCurrentHour(currentUtcTimestampMs);
-    int nightStart = _configOverrides->getNightStartHour();
-    int nightEnd = _configOverrides->getNightEndHour();
+    int nightStart = _configOverrides.getNightStartHour();
+    int nightEnd = _configOverrides.getNightEndHour();
     bool isNight = isNightTime(currentHour, nightStart, nightEnd);
 
     if (isNight)
