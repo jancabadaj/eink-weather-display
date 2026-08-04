@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     const char *outPath = argc > 2 ? argv[2] : "frame.bmp";
 
     static FrameBuffer frame;
-    Screens screens(frame.data());
+    Screens screens(frame);
 
     if (mode == "night-mode")
     {

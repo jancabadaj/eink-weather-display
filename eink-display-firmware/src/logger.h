@@ -11,6 +11,7 @@ class Logger
 public:
     // There is a single global logger instance which delegates to each attached sink
     void addSink(LogSink &sink, LogLevel minLevel);
+    void clearSinks();
 
     // Logging methods - use printf-style formatting
     void debug(const char *format, ...);

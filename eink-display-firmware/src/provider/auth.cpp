@@ -1,8 +1,4 @@
-#include <Arduino.h>
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFi.h>
-#include <esp_random.h>
 
 #include "auth.h"
 #include "../config.h"
@@ -14,16 +10,21 @@ static const char *KEY_REFRESH = "refresh";
 std::string Auth::generateState()
 {
     char buf[17];
-    snprintf(buf, sizeof(buf), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+    snprintf(buf, sizeof(buf), "%08lx%08lx", (unsigned long)_random.next(), (unsigned long)_random.next());
     return buf;
 }
 
-std::string Auth::getLoginUrl(const std::string &redirectUri)
+std::string Auth::getRedirectUri() const
+{
+    return "http://" + _network.localAddress();
+}
+
+std::string Auth::getLoginUrl()
 {
     _state = generateState();
     return std::string("https://api.netatmo.com/oauth2/authorize") +
-           "?client_id=" + Config::Secret::apiClientId +
-           "&redirect_uri=" + redirectUri +
+           "?client_id=" + _credentials.clientId +
+           "&redirect_uri=" + getRedirectUri() +
            "&scope=read_station" +
            "&state=" + _state;
 }
@@ -45,10 +46,10 @@ bool Auth::login(const std::string &code)
 
     const std::string requestBody =
         std::string("grant_type=authorization_code") +
-        "&client_id=" + Config::Secret::apiClientId +
-        "&client_secret=" + Config::Secret::apiClientSecret +
+        "&client_id=" + _credentials.clientId +
+        "&client_secret=" + _credentials.clientSecret +
         "&code=" + code +
-        "&redirect_uri=http://" + WiFi.localIP().toString().c_str() +
+        "&redirect_uri=" + getRedirectUri() +
         "&scope=read_station";
 
     return exchangeToken(requestBody);
@@ -65,8 +66,8 @@ bool Auth::refreshTokenIfNeeded()
 
         const std::string requestBody =
             std::string("grant_type=refresh_token") +
-            "&client_id=" + Config::Secret::apiClientId +
-            "&client_secret=" + Config::Secret::apiClientSecret +
+            "&client_id=" + _credentials.clientId +
+            "&client_secret=" + _credentials.clientSecret +
             "&refresh_token=" + _refreshToken;
 
         return exchangeToken(requestBody);
@@ -77,26 +78,22 @@ bool Auth::refreshTokenIfNeeded()
 
 bool Auth::exchangeToken(const std::string &requestBody)
 {
-    HTTPClient http;
-    http.begin(Config::Api::authUrl);
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
     logger.debug("[Auth] Request body: %s", requestBody.c_str());
 
-    const int httpResponseCode = http.POST(requestBody.c_str());
-    const std::string payload = http.getString().c_str();
-    http.end();
+    const HttpResponse response = _http.postForm(Config::Api::authUrl, requestBody);
+    const int httpResponseCode = response.status;
+    const std::string &payload = response.body;
 
     logger.info("[Auth] HTTP Response code: %d", httpResponseCode);
     logger.debug("[Auth] Response payload: %s", payload.c_str());
 
-    if (httpResponseCode == 200)
+    if (response.ok())
     {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payload);
         if (error)
         {
-            logger.error("[Auth] deserializeJson() failed: %s", error.f_str());
+            logger.error("[Auth] deserializeJson() failed: %s", error.c_str());
             return false;
         }
 

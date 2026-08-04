@@ -4,16 +4,21 @@
 #include "../domain/pressureHistory.h"
 
 #include "color.h"
+#include "frameBuffer.h"
 
 class Screens
 {
 public:
-    Screens(uint8_t *imageData) : _imageData(imageData) {}
+    explicit Screens(FrameBuffer &frame) : _frame(frame) {}
 
     void renderWeather(const WeatherData &data, const PressureHistory &pressureHistory);
     void renderNightModeIndicator();
     void renderNetworkError();
 
+    // The currently rendered frame
+    const uint8_t *pixels() const { return _frame.data(); }
+
 private:
-    uint8_t *_imageData;
+    FrameBuffer &_frame;
+    uint8_t *_imageData = _frame.data();
 };

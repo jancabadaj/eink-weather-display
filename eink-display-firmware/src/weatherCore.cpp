@@ -1,6 +1,4 @@
-#include <Arduino.h>
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
 
 #include "weatherCore.h"
 #include "config.h"
@@ -52,19 +50,14 @@ void WeatherCore::reloadData()
         return;
     }
 
-    HTTPClient http;
-    http.begin(Config::Api::dataUrl);
-    http.addHeader("Authorization", ("Bearer " + _auth.getAccessToken()).c_str());
-
-    // Send HTTP GET request
     const uint64_t requestStartMillis = _clock.uptimeMs();
-    int httpResponseCode = http.GET();
-    if (httpResponseCode == 200)
-    {
-        logger.info("[WeatherCore] HTTP Response code: %d", httpResponseCode);
-        const std::string payload = http.getString().c_str();
+    const HttpResponse response = _http.get(Config::Api::dataUrl, _auth.getAccessToken());
 
-        parseAndUpdateWeatherData(payload);
+    if (response.ok())
+    {
+        logger.info("[WeatherCore] HTTP Response code: %d", response.status);
+
+        parseAndUpdateWeatherData(response.body);
 
         _serverClock.syncTime(requestStartMillis, _weatherData.retrieval_timestamp);
 
@@ -76,14 +69,11 @@ void WeatherCore::reloadData()
     else
     {
         logger.error("[WeatherCore] HTTP error (consecutive failures: %d/%d) %d: %s",
-                     _consecutiveFailures, Config::Schedule::maxConsecutiveFailures, httpResponseCode, http.getString().c_str());
+                     _consecutiveFailures, Config::Schedule::maxConsecutiveFailures, response.status, response.body.c_str());
         _consecutiveFailures++;
     }
 
     updateDisplayAndSchedule();
-
-    // Free resources
-    http.end();
 }
 
 void WeatherCore::parseAndUpdateWeatherData(const std::string &payload)
@@ -93,7 +83,7 @@ void WeatherCore::parseAndUpdateWeatherData(const std::string &payload)
 
     if (error)
     {
-        logger.error("[WeatherCore] deserializeJson() failed: %s", error.f_str());
+        logger.error("[WeatherCore] deserializeJson() failed: %s", error.c_str());
         return;
     }
 
@@ -143,7 +133,7 @@ void WeatherCore::updateDisplayAndSchedule()
     {
         logger.error("[WeatherCore] Max consecutive failures reached! Clearing display and stopping updates.");
         _renderer.renderNetworkError();
-        _displayManager.refreshDisplay();
+        _display.present(_renderer.pixels());
         _updateLoopStopped = true;
         return;
     }
@@ -165,7 +155,7 @@ void WeatherCore::updateDisplayAndSchedule()
         // Night mode - always update display to show night mode indicator
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
         _renderer.renderNightModeIndicator();
-        _displayManager.refreshDisplay();
+        _display.present(_renderer.pixels());
         logger.info("[WeatherCore] Display set to night mode");
     }
     else
@@ -183,7 +173,7 @@ void WeatherCore::updateDisplayAndSchedule()
                     _weatherData.data_timestamp.count(),
                     _weatherData.retrieval_timestamp.count());
         _renderer.renderWeather(_weatherData, _pressureHistory);
-        _displayManager.refreshDisplay();
+        _display.present(_renderer.pixels());
         logger.info("[WeatherCore] Display updated");
     }
 }
@@ -215,26 +205,18 @@ void WeatherCore::fetchPressureHistory(unsigned long nowSec)
     url += "&optimize=false";
     url += "&real_time=false";
 
-    HTTPClient http;
-    http.begin(url.c_str());
-    http.addHeader("Authorization", ("Bearer " + _auth.getAccessToken()).c_str());
-
-    int httpResponseCode = http.GET();
-    if (httpResponseCode != 200)
+    const HttpResponse response = _http.get(url, _auth.getAccessToken());
+    if (!response.ok())
     {
-        logger.error("[WeatherCore] Pressure history fetch failed: %d", httpResponseCode);
-        http.end();
+        logger.error("[WeatherCore] Pressure history fetch failed: %d", response.status);
         return;
     }
 
-    const std::string payload = http.getString().c_str();
-    http.end();
-
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
+    DeserializationError error = deserializeJson(doc, response.body);
     if (error)
     {
-        logger.error("[WeatherCore] Pressure history JSON parse failed: %s", error.f_str());
+        logger.error("[WeatherCore] Pressure history JSON parse failed: %s", error.c_str());
         return;
     }
 

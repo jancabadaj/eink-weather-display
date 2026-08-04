@@ -17,12 +17,6 @@ const EXCLUDED = ['main.cpp', 'platform/arduino'];
 
 // Temporarily excluded - references Arduino / ESP headers.
 const NOT_YET_HOST_CLEAN = [
-    'logger.cpp',
-    'provider/auth.cpp',
-    'schedule/serverClock.cpp',
-    'schedule/updateScheduler.cpp',
-    'settings/configOverrides.cpp',
-    'weatherCore.cpp',
     'web/webServer.cpp',
 ];
 
@@ -76,6 +70,7 @@ async function buildPreview() {
         '-Wextra',
         `-I${SRC}`,
         `-I${HARNESS}`,
+        `-I${ARDUINOJSON_INC}`,
         path.join(HARNESS, 'preview_main.cpp'),
         ...sourcesToCompile().map((f) => path.join(SRC, f)),
         '-o',
@@ -109,12 +104,29 @@ const TEST_DIR = path.join(ROOT, 'test');
 // never reach the firmware build.
 const DOCTEST_INC = path.join(ROOT, '.pio', 'libdeps', 'native', 'doctest', 'doctest');
 
+// ArduinoJson is platform-independent and already fetched for the firmware, so
+// the host build compiles the parsers against the exact same version.
+const ARDUINOJSON_INC = path.join(ROOT, '.pio', 'libdeps', 'esp32dev', 'ArduinoJson', 'src');
+
 function testSources() {
     return fs
         .readdirSync(TEST_DIR)
         .filter((f) => f.endsWith('.cpp'))
         .sort()
         .map((f) => path.join(TEST_DIR, f));
+}
+
+// Catches a TEST_CASE that is declared but never runs - a duplicate name, a case
+// excluded by a filter, or a file dropped from the build.
+//
+// It does NOT catch a deleted test: if the declaration goes, this count drops
+// with it and the comparison still matches. Only review or git catches that.
+function declaredTestCount() {
+    return testSources()
+        .map((f) => fs.readFileSync(f, 'utf8'))
+        .join('\n')
+        .split('\n')
+        .filter((l) => /^\s*TEST_CASE(_TEMPLATE)?\s*\(/.test(l)).length;
 }
 
 function doctestMissing() {
@@ -142,6 +154,7 @@ async function buildTests() {
         '-Wextra',
         `-I${SRC}`,
         `-I${DOCTEST_INC}`,
+        `-I${ARDUINOJSON_INC}`,
         `-DPROJECT_ROOT="${ROOT}"`,
         ...testSources(),
         ...sourcesToCompile().map((f) => path.join(SRC, f)),
@@ -246,7 +259,19 @@ async function runTests() {
 
     const results = parseDoctestXml(xml);
     results.durationMs = Date.now() - started;
+
+    const declared = declaredTestCount();
+    if (results.tests.length !== declared) {
+        return {
+            ok: false,
+            error:
+                `Test count mismatch: ${declared} TEST_CASE(s) declared in test/, ` +
+                `but doctest ran ${results.tests.length}.\n` +
+                'A test was lost, or one failed to register.',
+        };
+    }
+
     return { ok: true, results };
 }
 
-module.exports = { buildPreview, render, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR };
+module.exports = { buildPreview, render, buildTests, runTests, declaredTestCount, DIST, SRC, HARNESS, TEST_DIR };

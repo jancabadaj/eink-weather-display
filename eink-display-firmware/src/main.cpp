@@ -9,10 +9,13 @@
 #include "config.h"
 #include "schedule/updateScheduler.h"
 #include "platform/arduino/arduinoClock.h"
+#include "platform/arduino/arduinoHttpClient.h"
 #include "platform/arduino/nvsStorage.h"
 #include "platform/arduino/serialSink.h"
 #include "platform/arduino/sheetsSink.h"
-#include "platform/arduino/displayManager.h"
+#include "platform/arduino/epdPanel.h"
+#include "platform/arduino/espRandom.h"
+#include "platform/arduino/wifiNetwork.h"
 #include "provider/auth.h"
 #include "web/webServer.h"
 #include "render/frameBuffer.h"
@@ -29,6 +32,9 @@ static FrameBuffer frame;
 std::unique_ptr<ArduinoClock> systemClock;
 std::unique_ptr<SerialSink> serialSink;
 std::unique_ptr<SheetsSink> sheetsSink;
+std::unique_ptr<ArduinoHttpClient> httpClient;
+std::unique_ptr<WifiNetwork> network;
+std::unique_ptr<EspRandom> randomSource;
 std::unique_ptr<NvsStorage> configStorage;
 std::unique_ptr<NvsStorage> authStorage;
 
@@ -36,7 +42,7 @@ std::unique_ptr<ConfigOverrides> configOverrides;
 std::unique_ptr<Auth> auth;
 std::unique_ptr<ServerClock> serverClock;
 std::unique_ptr<UpdateScheduler> updateScheduler;
-std::unique_ptr<DisplayManager> displayManager;
+std::unique_ptr<EpdPanel> panel;
 std::unique_ptr<Screens> renderer;
 std::unique_ptr<WeatherCore> weatherCore;
 std::unique_ptr<WebServer> webServer;
@@ -45,20 +51,27 @@ void setup()
 {
     // Initialize components
     systemClock = std::make_unique<ArduinoClock>();
+    httpClient = std::make_unique<ArduinoHttpClient>();
+    network = std::make_unique<WifiNetwork>();
+    randomSource = std::make_unique<EspRandom>();
     configStorage = std::make_unique<NvsStorage>("cfg");
     authStorage = std::make_unique<NvsStorage>("auth");
-    configOverrides = std::make_unique<ConfigOverrides>(*configStorage);
-    auth = std::make_unique<Auth>(*systemClock, *authStorage);
-    serverClock = std::make_unique<ServerClock>(*systemClock);
-    displayManager = std::make_unique<DisplayManager>(frame.data());
-    renderer = std::make_unique<Screens>(frame.data());
-    updateScheduler = std::make_unique<UpdateScheduler>(*systemClock, *serverClock, *configOverrides);
-    weatherCore = std::make_unique<WeatherCore>(*systemClock, *auth, *renderer, *displayManager, *updateScheduler, *serverClock);
-    webServer = std::make_unique<WebServer>(*systemClock, *weatherCore, *updateScheduler, *displayManager, *auth, *configOverrides);
 
-    // Initialize serial and display
-    displayManager->init();
-    displayManager->clearDisplay();
+    panel = std::make_unique<EpdPanel>();
+    renderer = std::make_unique<Screens>(frame);
+
+    configOverrides = std::make_unique<ConfigOverrides>(*configStorage);
+    serverClock = std::make_unique<ServerClock>(*systemClock);
+    updateScheduler = std::make_unique<UpdateScheduler>(*systemClock, *serverClock, *configOverrides);
+
+    auth = std::make_unique<Auth>(*systemClock, *httpClient, *authStorage, *network, *randomSource,
+                                  Credentials{Config::Secret::apiClientId, Config::Secret::apiClientSecret});
+
+    weatherCore = std::make_unique<WeatherCore>(*systemClock, *httpClient, *auth, *renderer,
+                                                *panel, *updateScheduler, *serverClock);
+
+    webServer = std::make_unique<WebServer>(*systemClock, *network, *weatherCore, *updateScheduler,
+                                            *panel, *auth, *configOverrides);
 
     Serial.print("Connecting to ");
     Serial.println(Config::Secret::wifiSsid);
@@ -72,14 +85,11 @@ void setup()
     Serial.print("WiFi connected. IP address: ");
     Serial.println(WiFi.localIP());
 
-    // Load persisted config overrides and tokens
-    configOverrides->init();
-    auth->loadTokens();
-
     // Initialize logging
     serialSink = std::make_unique<SerialSink>();
-    logger.addSink(*serialSink, LogLevel::DEBUG);
     sheetsSink = std::make_unique<SheetsSink>(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
+
+    logger.addSink(*serialSink, LogLevel::DEBUG);
     if (sheetsSink->enabled())
     {
         logger.addSink(*sheetsSink, Config::Log::minRemoteLevel);
@@ -90,7 +100,13 @@ void setup()
         logger.info("[Logger] Serial-only logging");
     }
 
+    panel->init();
+    panel->clear();
+
+    configOverrides->init();
+    auth->loadTokens();
     webServer->init();
+
     logger.critical("System startup");
 }
 

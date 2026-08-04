@@ -13,6 +13,11 @@ void Logger::addSink(LogSink &sink, LogLevel minLevel)
     }
 }
 
+void Logger::clearSinks()
+{
+    _sinkCount = 0;
+}
+
 void Logger::debug(const char *format, ...)
 {
     va_list args;
@@ -63,6 +68,20 @@ void Logger::log(LogLevel level, const char *format, ...)
 
 void Logger::logInternal(LogLevel level, const char *format, va_list args)
 {
+    size_t interested = 0;
+    for (size_t i = 0; i < _sinkCount; i++)
+    {
+        if (level >= _sinks[i].minLevel)
+        {
+            interested++;
+        }
+    }
+
+    if (interested == 0)
+    {
+        return; // nothing to format for
+    }
+
     vsnprintf(_buffer, LOG_BUFFER_SIZE, format, args);
 
     for (size_t i = 0; i < _sinkCount; i++)

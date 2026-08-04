@@ -98,7 +98,7 @@ bool WebServer::handleRequest(WiFiClient &client)
     if (header.find("GET /display/clear") != std::string::npos)
     {
         Serial.println("[WebServer] Clear display requested");
-        _displayManager.clearDisplay();
+        _display.clear();
         return true;
     }
 
@@ -197,11 +197,11 @@ void WebServer::sendHomePage(WiFiClient &client)
     const std::string nightDisplay = std::to_string(ns) + ":00&ndash;" + std::to_string(ne) + ":00 UTC " + nightTag;
 
     // Login URL (for button link)
-    const std::string loginUrl = _auth.getLoginUrl("http://" + std::string(WiFi.localIP().toString().c_str()));
+    const std::string loginUrl = _auth.getLoginUrl();
 
     // Assemble template
     std::string html = WEB_UI_HTML;
-    replaceAll(html, "{{IP}}", WiFi.localIP().toString().c_str());
+    replaceAll(html, "{{IP}}", _network.localAddress());
     replaceAll(html, "{{UPTIME_HUMAN}}", uptime);
     replaceAll(html, "{{MILLIS}}", std::to_string(now));
     replaceAll(html, "{{LOGGED_IN}}", _auth.isLoggedIn() ? "Yes" : "No");

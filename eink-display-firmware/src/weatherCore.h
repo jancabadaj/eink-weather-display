@@ -3,8 +3,10 @@
 #include "render/screens.h"
 #include "domain/weatherData.h"
 #include "domain/pressureHistory.h"
-#include "platform/arduino/displayManager.h"
+#include "platform/displayPanel.h"
+#include "render/frameBuffer.h"
 #include "platform/clock.h"
+#include "platform/httpClient.h"
 #include "provider/auth.h"
 #include "schedule/updateScheduler.h"
 #include "schedule/serverClock.h"
@@ -15,12 +17,13 @@ class WeatherCore
 {
 public:
     WeatherCore(Clock &clock,
+                HttpClient &http,
                 Auth &auth,
                 Screens &renderer,
-                DisplayManager &displayManager,
+                DisplayPanel &display,
                 UpdateScheduler &scheduler,
                 ServerClock &serverClock)
-        : _clock(clock), _auth(auth), _renderer(renderer), _displayManager(displayManager), _serverClock(serverClock), _scheduler(scheduler) {}
+        : _clock(clock), _http(http), _auth(auth), _renderer(renderer), _display(display), _serverClock(serverClock), _scheduler(scheduler) {}
 
     void loop();
     void reloadData();
@@ -30,9 +33,10 @@ public:
 
 private:
     Clock &_clock;
+    HttpClient &_http;
     Auth &_auth;
     Screens &_renderer;
-    DisplayManager &_displayManager;
+    DisplayPanel &_display;
     ServerClock &_serverClock;
     UpdateScheduler &_scheduler;
 
