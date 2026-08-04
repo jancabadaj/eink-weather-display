@@ -4,11 +4,12 @@
 #include <string>
 
 #include "../platform/clock.h"
+#include "../platform/storage.h"
 
 class Auth
 {
 public:
-    explicit Auth(Clock &clock) : _clock(clock) {}
+    Auth(Clock &clock, Storage &storage) : _clock(clock), _storage(storage) {}
 
     const std::string &getAccessToken() const { return _accessToken; }
     bool isLoggedIn() const { return !_refreshToken.empty(); }
@@ -27,6 +28,7 @@ private:
     static std::string generateState();
 
     Clock &_clock;
+    Storage &_storage;
     std::string _accessToken;
     std::string _refreshToken;
     std::string _state;

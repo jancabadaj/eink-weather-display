@@ -1,33 +1,28 @@
 #include <string>
-#include "configOverrides.h"
-#include "../logger.h"
-#include "../config.h"
 
-static const char *NVS_NS = "cfg";
+#include "../config.h"
+#include "../logger.h"
+#include "configOverrides.h"
+
 static const char *KEY_VERSION = "version";
 static const char *KEY_NIGHT_START = "night_start";
 static const char *KEY_NIGHT_END = "night_end";
 
 void ConfigOverrides::init()
 {
-    Preferences prefs;
-    prefs.begin(NVS_NS, false);
-
-    const std::string storedVersion = prefs.getString(KEY_VERSION, "").c_str();
+    const std::string storedVersion = _storage.getString(KEY_VERSION, "");
     if (storedVersion != Config::version)
     {
         logger.warning("[ConfigOverrides] Version mismatch (stored: '%s', current: '%s') — clearing overrides",
                        storedVersion.c_str(), Config::version);
-        prefs.clear();
-        prefs.putString(KEY_VERSION, Config::version);
+        _storage.clear();
+        _storage.putString(KEY_VERSION, Config::version);
     }
     else
     {
-        _nightStart = prefs.getInt(KEY_NIGHT_START, -1);
-        _nightEnd = prefs.getInt(KEY_NIGHT_END, -1);
+        _nightStart = _storage.getInt(KEY_NIGHT_START, -1);
+        _nightEnd = _storage.getInt(KEY_NIGHT_END, -1);
     }
-
-    prefs.end();
 
     logger.info("[ConfigOverrides] Loaded — night: %s",
                 (_nightStart != -1 || _nightEnd != -1)
@@ -37,11 +32,8 @@ void ConfigOverrides::init()
 
 void ConfigOverrides::resetAll()
 {
-    Preferences prefs;
-    prefs.begin(NVS_NS, false);
-    prefs.clear();
-    prefs.putString(KEY_VERSION, Config::version);
-    prefs.end();
+    _storage.clear();
+    _storage.putString(KEY_VERSION, Config::version);
 
     _nightStart = -1;
     _nightEnd = -1;
@@ -61,19 +53,13 @@ int ConfigOverrides::getNightEndHour() const
 void ConfigOverrides::setNightStartHour(int hour)
 {
     _nightStart = hour;
-    Preferences prefs;
-    prefs.begin(NVS_NS, false);
-    prefs.putInt(KEY_NIGHT_START, hour);
-    prefs.end();
+    _storage.putInt(KEY_NIGHT_START, hour);
     logger.info("[ConfigOverrides] Night start set to %d UTC", hour);
 }
 
 void ConfigOverrides::setNightEndHour(int hour)
 {
     _nightEnd = hour;
-    Preferences prefs;
-    prefs.begin(NVS_NS, false);
-    prefs.putInt(KEY_NIGHT_END, hour);
-    prefs.end();
+    _storage.putInt(KEY_NIGHT_END, hour);
     logger.info("[ConfigOverrides] Night end set to %d UTC", hour);
 }

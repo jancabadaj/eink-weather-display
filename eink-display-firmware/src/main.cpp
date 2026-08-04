@@ -9,6 +9,7 @@
 #include "config.h"
 #include "schedule/updateScheduler.h"
 #include "platform/arduino/arduinoClock.h"
+#include "platform/arduino/nvsStorage.h"
 #include "platform/arduino/serialSink.h"
 #include "platform/arduino/sheetsSink.h"
 #include "platform/arduino/displayManager.h"
@@ -28,6 +29,8 @@ static FrameBuffer frame;
 std::unique_ptr<ArduinoClock> systemClock;
 std::unique_ptr<SerialSink> serialSink;
 std::unique_ptr<SheetsSink> sheetsSink;
+std::unique_ptr<NvsStorage> configStorage;
+std::unique_ptr<NvsStorage> authStorage;
 
 std::unique_ptr<ConfigOverrides> configOverrides;
 std::unique_ptr<Auth> auth;
@@ -42,8 +45,10 @@ void setup()
 {
     // Initialize components
     systemClock = std::make_unique<ArduinoClock>();
-    configOverrides = std::make_unique<ConfigOverrides>();
-    auth = std::make_unique<Auth>(*systemClock);
+    configStorage = std::make_unique<NvsStorage>("cfg");
+    authStorage = std::make_unique<NvsStorage>("auth");
+    configOverrides = std::make_unique<ConfigOverrides>(*configStorage);
+    auth = std::make_unique<Auth>(*systemClock, *authStorage);
     serverClock = std::make_unique<ServerClock>(*systemClock);
     displayManager = std::make_unique<DisplayManager>(frame.data());
     renderer = std::make_unique<Screens>(frame.data());

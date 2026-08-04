@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
-#include <Preferences.h>
 #include <WiFi.h>
 #include <esp_random.h>
 
@@ -9,7 +8,6 @@
 #include "../config.h"
 #include "../logger.h"
 
-static const char *NVS_NS = "auth";
 static const char *KEY_ACCESS = "access";
 static const char *KEY_REFRESH = "refresh";
 
@@ -128,11 +126,8 @@ bool Auth::exchangeToken(const std::string &requestBody)
 
 void Auth::loadTokens()
 {
-    Preferences prefs;
-    prefs.begin(NVS_NS, true);
-    const std::string access = prefs.getString(KEY_ACCESS, "").c_str();
-    const std::string refresh = prefs.getString(KEY_REFRESH, "").c_str();
-    prefs.end();
+    const std::string access = _storage.getString(KEY_ACCESS, "");
+    const std::string refresh = _storage.getString(KEY_REFRESH, "");
 
     if (access.empty() || refresh.empty())
     {
@@ -148,9 +143,6 @@ void Auth::loadTokens()
 
 void Auth::saveTokens()
 {
-    Preferences prefs;
-    prefs.begin(NVS_NS, false);
-    prefs.putString(KEY_ACCESS, _accessToken.c_str());
-    prefs.putString(KEY_REFRESH, _refreshToken.c_str());
-    prefs.end();
+    _storage.putString(KEY_ACCESS, _accessToken);
+    _storage.putString(KEY_REFRESH, _refreshToken);
 }
