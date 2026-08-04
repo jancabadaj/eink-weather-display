@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include <string>
 #include "configOverrides.h"
 #include "../logger.h"
 #include "../config.h"
@@ -13,7 +13,7 @@ void ConfigOverrides::init()
     Preferences prefs;
     prefs.begin(NVS_NS, false);
 
-    String storedVersion = prefs.getString(KEY_VERSION, "");
+    const std::string storedVersion = prefs.getString(KEY_VERSION, "").c_str();
     if (storedVersion != Config::version)
     {
         logger.warning("[ConfigOverrides] Version mismatch (stored: '%s', current: '%s') — clearing overrides",
@@ -31,7 +31,7 @@ void ConfigOverrides::init()
 
     logger.info("[ConfigOverrides] Loaded — night: %s",
                 (_nightStart != -1 || _nightEnd != -1)
-                    ? (String(_nightStart) + "-" + String(_nightEnd)).c_str()
+                    ? (std::to_string(_nightStart) + "-" + std::to_string(_nightEnd)).c_str()
                     : "default");
 }
 

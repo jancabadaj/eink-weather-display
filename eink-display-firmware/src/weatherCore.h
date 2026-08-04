@@ -8,6 +8,7 @@
 #include "schedule/updateScheduler.h"
 #include "schedule/serverClock.h"
 #include <memory>
+#include <string>
 #include <chrono>
 
 class WeatherCore
@@ -33,14 +34,14 @@ private:
     std::shared_ptr<ServerClock> _serverClock;
     std::shared_ptr<UpdateScheduler> _scheduler;
 
-    void parseAndUpdateWeatherData(const String &payload);
+    void parseAndUpdateWeatherData(const std::string &payload);
     void updateDisplayAndSchedule();
     void updatePressureHistory();
     void fetchPressureHistory(unsigned long nowSec);
 
     WeatherData _weatherData{};
     PressureHistory _pressureHistory;
-    String _deviceId;
+    std::string _deviceId;
     std::chrono::milliseconds _previousDataTimestamp{0};
     bool _hasInitialData = false;
     bool _updateLoopStopped = false;

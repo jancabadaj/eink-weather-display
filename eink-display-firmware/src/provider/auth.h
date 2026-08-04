@@ -1,15 +1,15 @@
 #pragma once
 
-#include <Arduino.h>
+#include <string>
 
 class Auth
 {
 public:
-    String const &getAccessToken() const { return _accessToken; }
-    bool isLoggedIn() const { return !_refreshToken.isEmpty(); }
+    const std::string &getAccessToken() const { return _accessToken; }
+    bool isLoggedIn() const { return !_refreshToken.empty(); }
 
-    String getLoginUrl(const String &redirectUri);
-    bool handleCallback(const String &state, const String &code);
+    std::string getLoginUrl(const std::string &redirectUri);
+    bool handleCallback(const std::string &state, const std::string &code);
     bool refreshTokenIfNeeded();
 
     // Persistence between reboots
@@ -17,13 +17,13 @@ public:
     void loadTokens();
 
 private:
-    bool login(const String &code);
-    bool exchangeToken(const String &requestBody);
-    static String generateState();
+    bool login(const std::string &code);
+    bool exchangeToken(const std::string &requestBody);
+    static std::string generateState();
 
-    String _accessToken;
-    String _refreshToken;
-    String _state;
+    std::string _accessToken;
+    std::string _refreshToken;
+    std::string _state;
     unsigned long _tokenExpirationTimeMs = 0;
 
     friend class WebServer;

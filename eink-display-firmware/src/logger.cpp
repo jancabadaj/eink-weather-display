@@ -11,8 +11,8 @@ void Logger::init(const char *deploymentId, const char *apiKey)
     if (deploymentId != nullptr && apiKey != nullptr &&
         strlen(deploymentId) > 0 && strlen(apiKey) > 0)
     {
-        _deploymentId = String(deploymentId);
-        _apiKey = String(apiKey);
+        _deploymentId = deploymentId;
+        _apiKey = apiKey;
         _googleSheetsEnabled = true;
         info("[Logger] Google Sheets logging enabled");
     }
@@ -100,9 +100,9 @@ void Logger::sendToGoogleSheets(const char *message, LogLevel level)
     HTTPClient http;
 
     // Build Google Apps Script URL
-    String url = "https://script.google.com/macros/s/" + _deploymentId + "/exec";
+    const std::string url = "https://script.google.com/macros/s/" + _deploymentId + "/exec";
 
-    if (!http.begin(url))
+    if (!http.begin(url.c_str()))
     {
         return; // Silently fail
     }
@@ -111,17 +111,32 @@ void Logger::sendToGoogleSheets(const char *message, LogLevel level)
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     // URL encode the log message (basic encoding)
-    String encodedMessage = String(message);
-    encodedMessage.replace(" ", "+");
-    encodedMessage.replace("\n", "%0A");
-    encodedMessage.replace("\r", "%0D");
+    std::string encodedMessage;
+    encodedMessage.reserve(strlen(message) + 8);
+    for (const char *c = message; *c; c++)
+    {
+        switch (*c)
+        {
+        case ' ':
+            encodedMessage += '+';
+            break;
+        case '\n':
+            encodedMessage += "%0A";
+            break;
+        case '\r':
+            encodedMessage += "%0D";
+            break;
+        default:
+            encodedMessage += *c;
+        }
+    }
 
-    String postData = "key=" + _apiKey +
-                      "&log=" + encodedMessage +
-                      "&level=" + String(levelToString(level));
+    const std::string postData = "key=" + _apiKey +
+                                 "&log=" + encodedMessage +
+                                 "&level=" + levelToString(level);
 
     // Send POST request (non-blocking, fire and forget)
-    http.POST(postData);
+    http.POST(postData.c_str());
     http.end();
 }
 

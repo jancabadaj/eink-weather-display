@@ -1,6 +1,8 @@
 #pragma once
 
-#include <Arduino.h>
+#include <cstdarg>
+#include <string>
+
 #include "config.h"
 
 class Logger
@@ -33,8 +35,8 @@ private:
     LogLevel _minLevel;
 
     // Google Sheets configuration
-    String _deploymentId;
-    String _apiKey;
+    std::string _deploymentId;
+    std::string _apiKey;
     bool _googleSheetsEnabled;
 
     // Buffer for formatting messages

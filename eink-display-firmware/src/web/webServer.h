@@ -1,6 +1,8 @@
 #pragma once
 
 #include <WiFi.h>
+
+#include <string>
 #include "../provider/auth.h"
 #include "../platform/arduino/displayManager.h"
 #include "../weatherCore.h"
@@ -32,9 +34,9 @@ private:
 
     void sendHomePage(WiFiClient &client);
 
-    static String formatDuration(unsigned long ms);
-    static String parseQueryParam(const String &header, const String &key);
-    static bool isValidInt(const String &s);
+    static std::string formatDuration(unsigned long ms);
+    static std::string parseQueryParam(const std::string &header, const std::string &key);
+    static bool isValidInt(const std::string &s);
 
     std::shared_ptr<WeatherCore> _weatherCore;
     std::shared_ptr<UpdateScheduler> _scheduler;

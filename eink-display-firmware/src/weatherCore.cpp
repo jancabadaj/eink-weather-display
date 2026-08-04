@@ -54,7 +54,7 @@ void WeatherCore::reloadData()
 
     HTTPClient http;
     http.begin(Config::Api::dataUrl);
-    http.addHeader("Authorization", "Bearer " + _auth->getAccessToken());
+    http.addHeader("Authorization", ("Bearer " + _auth->getAccessToken()).c_str());
 
     // Send HTTP GET request
     unsigned long requestStartMillis = millis();
@@ -62,7 +62,7 @@ void WeatherCore::reloadData()
     if (httpResponseCode == 200)
     {
         logger.info("[WeatherCore] HTTP Response code: %d", httpResponseCode);
-        String payload = http.getString();
+        const std::string payload = http.getString().c_str();
 
         parseAndUpdateWeatherData(payload);
 
@@ -86,7 +86,7 @@ void WeatherCore::reloadData()
     http.end();
 }
 
-void WeatherCore::parseAndUpdateWeatherData(const String &payload)
+void WeatherCore::parseAndUpdateWeatherData(const std::string &payload)
 {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
@@ -104,7 +104,7 @@ void WeatherCore::parseAndUpdateWeatherData(const String &payload)
     const char *deviceId = device["_id"] | "";
     if (strlen(deviceId) > 0)
     {
-        _deviceId = String(deviceId);
+        _deviceId = deviceId;
     }
 
     // Internal data (main station)
@@ -207,17 +207,17 @@ void WeatherCore::fetchPressureHistory(unsigned long nowSec)
 {
     unsigned long dateBegin = nowSec - (Config::PressureChart::historyHours * 3600UL);
 
-    String url = Config::Api::historyUrl;
+    std::string url = Config::Api::historyUrl;
     url += "?device_id=" + _deviceId;
-    url += "&date_begin=" + String(dateBegin);
+    url += "&date_begin=" + std::to_string(dateBegin);
     url += "&scale=1hour";
     url += "&type=pressure";
     url += "&optimize=false";
     url += "&real_time=false";
 
     HTTPClient http;
-    http.begin(url);
-    http.addHeader("Authorization", "Bearer " + _auth->getAccessToken());
+    http.begin(url.c_str());
+    http.addHeader("Authorization", ("Bearer " + _auth->getAccessToken()).c_str());
 
     int httpResponseCode = http.GET();
     if (httpResponseCode != 200)
@@ -227,7 +227,7 @@ void WeatherCore::fetchPressureHistory(unsigned long nowSec)
         return;
     }
 
-    String payload = http.getString();
+    const std::string payload = http.getString().c_str();
     http.end();
 
     JsonDocument doc;

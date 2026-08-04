@@ -13,26 +13,26 @@ static const char *NVS_NS = "auth";
 static const char *KEY_ACCESS = "access";
 static const char *KEY_REFRESH = "refresh";
 
-String Auth::generateState()
+std::string Auth::generateState()
 {
     char buf[17];
     snprintf(buf, sizeof(buf), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
-    return String(buf);
+    return buf;
 }
 
-String Auth::getLoginUrl(const String &redirectUri)
+std::string Auth::getLoginUrl(const std::string &redirectUri)
 {
     _state = generateState();
-    return String("https://api.netatmo.com/oauth2/authorize") +
-           "?client_id=" + String(Config::Secret::apiClientId) +
+    return std::string("https://api.netatmo.com/oauth2/authorize") +
+           "?client_id=" + Config::Secret::apiClientId +
            "&redirect_uri=" + redirectUri +
            "&scope=read_station" +
            "&state=" + _state;
 }
 
-bool Auth::handleCallback(const String &state, const String &code)
+bool Auth::handleCallback(const std::string &state, const std::string &code)
 {
-    if (_state.isEmpty() || state != _state)
+    if (_state.empty() || state != _state)
     {
         logger.error("[Auth] OAuth state mismatch — possible CSRF");
         return false;
@@ -41,17 +41,17 @@ bool Auth::handleCallback(const String &state, const String &code)
     return login(code);
 }
 
-bool Auth::login(const String &code)
+bool Auth::login(const std::string &code)
 {
     logger.info("[Auth] Logging in");
 
-    String requestBody = String("") +
-                         "grant_type=authorization_code" + "&" +
-                         "client_id=" + String(Config::Secret::apiClientId) + "&" +
-                         "client_secret=" + String(Config::Secret::apiClientSecret) + "&" +
-                         "code=" + code + "&" +
-                         "redirect_uri=http://" + WiFi.localIP().toString() + "&" +
-                         "scope=read_station";
+    const std::string requestBody =
+        std::string("grant_type=authorization_code") +
+        "&client_id=" + Config::Secret::apiClientId +
+        "&client_secret=" + Config::Secret::apiClientSecret +
+        "&code=" + code +
+        "&redirect_uri=http://" + WiFi.localIP().toString().c_str() +
+        "&scope=read_station";
 
     return exchangeToken(requestBody);
 }
@@ -65,11 +65,11 @@ bool Auth::refreshTokenIfNeeded()
         logger.info("[Auth] Refreshing token (expiration at %lu, current millis %lu)",
                     _tokenExpirationTimeMs, millis());
 
-        String requestBody = String("") +
-                             "grant_type=refresh_token" + "&" +
-                             "client_id=" + String(Config::Secret::apiClientId) + "&" +
-                             "client_secret=" + String(Config::Secret::apiClientSecret) + "&" +
-                             "refresh_token=" + _refreshToken;
+        const std::string requestBody =
+            std::string("grant_type=refresh_token") +
+            "&client_id=" + Config::Secret::apiClientId +
+            "&client_secret=" + Config::Secret::apiClientSecret +
+            "&refresh_token=" + _refreshToken;
 
         return exchangeToken(requestBody);
     }
@@ -77,7 +77,7 @@ bool Auth::refreshTokenIfNeeded()
     return true;
 }
 
-bool Auth::exchangeToken(const String &requestBody)
+bool Auth::exchangeToken(const std::string &requestBody)
 {
     HTTPClient http;
     http.begin(Config::Api::authUrl);
@@ -85,8 +85,8 @@ bool Auth::exchangeToken(const String &requestBody)
 
     logger.debug("[Auth] Request body: %s", requestBody.c_str());
 
-    int httpResponseCode = http.POST(requestBody);
-    String payload = http.getString();
+    const int httpResponseCode = http.POST(requestBody.c_str());
+    const std::string payload = http.getString().c_str();
     http.end();
 
     logger.info("[Auth] HTTP Response code: %d", httpResponseCode);
@@ -111,8 +111,8 @@ bool Auth::exchangeToken(const String &requestBody)
         }
 
         long expires_in = doc["expires_in"];
-        _accessToken = String(access_token);
-        _refreshToken = String(refresh_token);
+        _accessToken = access_token;
+        _refreshToken = refresh_token;
         _tokenExpirationTimeMs = millis() + (unsigned long)expires_in * 1000UL; // expires_in is in seconds
         logger.info("[Auth] Token exchange successful, expires in %lds", expires_in);
 
@@ -130,11 +130,11 @@ void Auth::loadTokens()
 {
     Preferences prefs;
     prefs.begin(NVS_NS, true);
-    String access = prefs.getString(KEY_ACCESS, "");
-    String refresh = prefs.getString(KEY_REFRESH, "");
+    const std::string access = prefs.getString(KEY_ACCESS, "").c_str();
+    const std::string refresh = prefs.getString(KEY_REFRESH, "").c_str();
     prefs.end();
 
-    if (access.isEmpty() || refresh.isEmpty())
+    if (access.empty() || refresh.empty())
     {
         logger.info("[Auth] No stored tokens found, login required");
         return;
@@ -150,7 +150,7 @@ void Auth::saveTokens()
 {
     Preferences prefs;
     prefs.begin(NVS_NS, false);
-    prefs.putString(KEY_ACCESS, _accessToken);
-    prefs.putString(KEY_REFRESH, _refreshToken);
+    prefs.putString(KEY_ACCESS, _accessToken.c_str());
+    prefs.putString(KEY_REFRESH, _refreshToken.c_str());
     prefs.end();
 }
