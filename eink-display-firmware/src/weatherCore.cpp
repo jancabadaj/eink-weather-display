@@ -110,11 +110,11 @@ void WeatherCore::updateDisplayAndSchedule()
     }
 
     // Schedule next refresh based on data timestamp
-    bool scheduled = _scheduler.scheduleRefresh(_weatherData.data_timestamp.count());
+    const Planner::Mode mode = _scheduler.scheduleRefresh(_weatherData.data_timestamp.count());
     bool dataChanged = (_weatherData.data_timestamp != _previousDataTimestamp);
     _previousDataTimestamp = _weatherData.data_timestamp;
 
-    if (!scheduled)
+    if (mode == Planner::Mode::Night)
     {
         // Night mode - always update display to show night mode indicator
         logger.info("[WeatherCore] Next refresh scheduled during night time, updates paused");
