@@ -1,6 +1,6 @@
-#include <ArduinoJson.h>
 
 #include "auth.h"
+#include "netatmoParse.h"
 #include "../config.h"
 #include "../logger.h"
 
@@ -89,27 +89,16 @@ bool Auth::exchangeToken(const std::string &requestBody)
 
     if (response.ok())
     {
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, payload);
-        if (error)
+        NetatmoParse::TokenSet tokens;
+        if (!NetatmoParse::parseTokenResponse(payload, tokens))
         {
-            logger.error("[Auth] deserializeJson() failed: %s", error.c_str());
             return false;
         }
 
-        const char *access_token = doc["access_token"];
-        const char *refresh_token = doc["refresh_token"];
-        if (!access_token || !refresh_token)
-        {
-            logger.error("[Auth] Token response missing access_token or refresh_token");
-            return false;
-        }
-
-        long expires_in = doc["expires_in"];
-        _accessToken = access_token;
-        _refreshToken = refresh_token;
-        _tokenExpirationTimeMs = _clock.uptimeMs() + (uint64_t)expires_in * 1000ULL; // expires_in is in seconds
-        logger.info("[Auth] Token exchange successful, expires in %lds", expires_in);
+        _accessToken = tokens.accessToken;
+        _refreshToken = tokens.refreshToken;
+        _tokenExpirationTimeMs = _clock.uptimeMs() + (uint64_t)tokens.expiresInSeconds * 1000ULL;
+        logger.info("[Auth] Token exchange successful, expires in %lds", tokens.expiresInSeconds);
 
         saveTokens();
         return true;

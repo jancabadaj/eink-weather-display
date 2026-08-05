@@ -1,6 +1,6 @@
-#include <ArduinoJson.h>
 
 #include "weatherCore.h"
+#include "provider/netatmoParse.h"
 #include "config.h"
 #include "logger.h"
 
@@ -78,53 +78,17 @@ void WeatherCore::reloadData()
 
 void WeatherCore::parseAndUpdateWeatherData(const std::string &payload)
 {
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (error)
+    NetatmoParse::StationData parsed;
+    if (!NetatmoParse::parseStationData(payload, parsed))
     {
-        logger.error("[WeatherCore] deserializeJson() failed: %s", error.c_str());
         return;
     }
 
-    // Navigate to the first device (main station)
-    JsonObject device = doc["body"]["devices"][0];
-
-    // Extract device ID for history API
-    const char *deviceId = device["_id"] | "";
-    if (strlen(deviceId) > 0)
+    _weatherData = parsed.weather;
+    if (!parsed.deviceId.empty())
     {
-        _deviceId = deviceId;
+        _deviceId = parsed.deviceId;
     }
-
-    // Internal data (main station)
-    JsonObject internalDash = device["dashboard_data"];
-    WeatherDataInternal internal;
-    internal.temperature = internalDash["Temperature"] | 0.0f;
-    internal.humidity = internalDash["Humidity"] | 0;
-    internal.pressure = internalDash["Pressure"] | 0.0f;
-    internal.noise = internalDash["Noise"] | 0;
-    internal.co2 = internalDash["CO2"] | 0;
-
-    // External data (first outdoor module)
-    JsonObject module = device["modules"][0];
-    JsonObject externalDash = module["dashboard_data"];
-    WeatherDataExternal external;
-    external.temperature = externalDash["Temperature"] | 0.0f;
-    external.humidity = externalDash["Humidity"] | 0;
-
-    // Timestamp (use internal time_utc)
-    unsigned long long data_utc = internalDash["time_utc"] | 0;
-    std::chrono::system_clock::time_point data_timestamp = std::chrono::system_clock::from_time_t(data_utc);
-
-    unsigned long long retrieval_utc = doc["time_server"] | 0;
-    std::chrono::system_clock::time_point retrieval_timestamp = std::chrono::system_clock::from_time_t(retrieval_utc);
-
-    _weatherData = {
-        .internal = internal,
-        .external = external,
-        .data_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(data_timestamp.time_since_epoch()),
-        .retrieval_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(retrieval_timestamp.time_since_epoch())};
 }
 
 void WeatherCore::updateDisplayAndSchedule()
@@ -212,22 +176,9 @@ void WeatherCore::fetchPressureHistory(unsigned long nowSec)
         return;
     }
 
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, response.body);
-    if (error)
+    if (!NetatmoParse::parseMeasure(response.body, _pressureHistory))
     {
-        logger.error("[WeatherCore] Pressure history JSON parse failed: %s", error.c_str());
         return;
-    }
-
-    _pressureHistory.clear();
-    for (JsonPair kv : doc["body"].as<JsonObject>())
-    {
-        unsigned long timestamp = strtoul(kv.key().c_str(), nullptr, 10);
-        JsonArray vals = kv.value().as<JsonArray>();
-        if (vals.size() == 0)
-            continue;
-        _pressureHistory.addReading(timestamp, vals[0] | 0.0f);
     }
 
     logger.info("[WeatherCore] Pressure history loaded: %d entries", _pressureHistory.count);
