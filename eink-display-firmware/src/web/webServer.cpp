@@ -48,7 +48,7 @@ StatusSnapshot WebServer::captureStatus() const
     status.refreshToken = session.refreshToken;
     status.loginUrl = _auth.getLoginUrl();
 
-    status.updatesStopped = _weatherCore.isUpdateLoopStopped();
+    status.updatesStopped = _app.isUpdateLoopStopped();
     status.nextRefreshUptimeMs = _scheduler.getNextScheduledRefreshMillis();
 
     status.nightStartHour = _configOverrides.getNightStartHour();
@@ -71,7 +71,7 @@ Web::Response WebServer::applyConfig(const Web::Request &request)
         _configOverrides.setNightEndHour(hour);
     }
 
-    _weatherCore.restartUpdateLoop(); // apply immediately
+    _app.restartUpdateLoop(); // apply immediately
     return Web::Response::seeOther("/");
 }
 
@@ -85,7 +85,7 @@ Web::Response WebServer::handle(const Web::Request &request)
     if (request.path == "/display/restart")
     {
         logger.info("[WebServer] Restart auto updates requested");
-        _weatherCore.restartUpdateLoop();
+        _app.restartUpdateLoop();
         return Web::Response::seeOther("/");
     }
 
@@ -99,7 +99,7 @@ Web::Response WebServer::handle(const Web::Request &request)
     if (request.path == "/data/get")
     {
         logger.info("[WebServer] Manual data refresh requested");
-        _weatherCore.reloadData();
+        _app.reloadData();
         return Web::Response::seeOther("/");
     }
 
@@ -107,7 +107,7 @@ Web::Response WebServer::handle(const Web::Request &request)
     {
         logger.info("[WebServer] Config reset requested");
         _configOverrides.resetAll();
-        _weatherCore.restartUpdateLoop(); // apply immediately
+        _app.restartUpdateLoop(); // apply immediately
         return Web::Response::seeOther("/");
     }
 

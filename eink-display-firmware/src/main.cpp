@@ -18,10 +18,11 @@
 #include "platform/arduino/wifiNetwork.h"
 #include "platform/arduino/wifiTransport.h"
 #include "provider/auth.h"
+#include "provider/netatmoProvider.h"
 #include "web/webServer.h"
 #include "render/frameBuffer.h"
 #include "render/screens.h"
-#include "weatherCore.h"
+#include "app.h"
 #include "schedule/serverClock.h"
 #include "logger.h"
 
@@ -45,7 +46,8 @@ std::unique_ptr<ServerClock> serverClock;
 std::unique_ptr<UpdateScheduler> updateScheduler;
 std::unique_ptr<EpdPanel> panel;
 std::unique_ptr<Screens> renderer;
-std::unique_ptr<WeatherCore> weatherCore;
+std::unique_ptr<NetatmoProvider> provider;
+std::unique_ptr<App> app;
 std::unique_ptr<WebServer> webServer;
 std::unique_ptr<WifiTransport> transport;
 
@@ -69,10 +71,11 @@ void setup()
     auth = std::make_unique<Auth>(*systemClock, *httpClient, *authStorage, *network, *randomSource,
                                   Credentials{Config::Secret::apiClientId, Config::Secret::apiClientSecret});
 
-    weatherCore = std::make_unique<WeatherCore>(*systemClock, *httpClient, *auth, *renderer,
-                                                *panel, *updateScheduler, *serverClock);
+    provider = std::make_unique<NetatmoProvider>(*httpClient, *auth);
+    app = std::make_unique<App>(*systemClock, *provider, *renderer, *panel, *updateScheduler,
+                                *serverClock);
 
-    webServer = std::make_unique<WebServer>(*systemClock, *network, *weatherCore, *updateScheduler,
+    webServer = std::make_unique<WebServer>(*systemClock, *network, *app, *updateScheduler,
                                             *panel, *auth, *configOverrides);
     transport = std::make_unique<WifiTransport>(*systemClock, *webServer);
 
@@ -116,7 +119,7 @@ void setup()
 void loop()
 {
     transport->poll();
-    weatherCore->loop();
+    app->tick();
 
     // TODO: light sleep causes issues - random reboots
     // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds

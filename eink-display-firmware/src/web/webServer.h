@@ -6,7 +6,7 @@
 #include "../provider/auth.h"
 #include "../schedule/updateScheduler.h"
 #include "../settings/configOverrides.h"
-#include "../weatherCore.h"
+#include "../app.h"
 #include "requestHandler.h"
 #include "statusSnapshot.h"
 
@@ -17,12 +17,12 @@ class WebServer : public RequestHandler
 public:
     WebServer(Clock &clock,
               Network &network,
-              WeatherCore &weatherCore,
+              App &app,
               UpdateScheduler &scheduler,
               DisplayPanel &display,
               Auth &auth,
               ConfigOverrides &configOverrides)
-        : _clock(clock), _network(network), _weatherCore(weatherCore), _scheduler(scheduler),
+        : _clock(clock), _network(network), _app(app), _scheduler(scheduler),
           _display(display), _auth(auth), _configOverrides(configOverrides) {}
 
     Web::Response handle(const Web::Request &request) override;
@@ -34,7 +34,7 @@ private:
 
     Clock &_clock;
     Network &_network;
-    WeatherCore &_weatherCore;
+    App &_app;
     UpdateScheduler &_scheduler;
     DisplayPanel &_display;
     Auth &_auth;

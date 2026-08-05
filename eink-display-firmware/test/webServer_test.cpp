@@ -52,8 +52,7 @@ TEST_CASE("WebServer: clearDisplayReachesThePanel")
 TEST_CASE("WebServer: manualRefreshAttemptsAFetch")
 {
     AppFixture app;
-    app.http.queueOk(R"({"access_token":"a","refresh_token":"r","expires_in":10800})");
-    app.auth.handleCallback(stateFromLoginUrl(app.auth.getLoginUrl()), "auth-code");
+    app.logIn();
     const size_t callsAfterLogin = app.http.calls.size();
 
     app.get("/data/get");
