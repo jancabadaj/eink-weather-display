@@ -3,7 +3,7 @@
 // HTML template stored in program memory (flash) to save RAM
 // Placeholders are replaced with dynamic values in WebServer::sendHomePage()
 
-static const char WEB_UI_HTML[] PROGMEM = R"HTML(
+static const char WEB_UI_HTML[] = R"HTML(
 <!DOCTYPE html>
 <html lang="en">
 <head>

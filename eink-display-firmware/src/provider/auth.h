@@ -18,6 +18,19 @@ struct Credentials
 class Auth
 {
 public:
+    struct SessionStatus
+    {
+        bool loggedIn = false;
+        uint64_t expiryUptimeMs = 0;
+        std::string accessToken;
+        std::string refreshToken;
+    };
+
+    SessionStatus sessionStatus() const
+    {
+        return {isLoggedIn(), _tokenExpirationTimeMs, _accessToken, _refreshToken};
+    }
+
     Auth(Clock &clock, HttpClient &http, Storage &storage, Network &network, Random &random,
          Credentials credentials)
         : _clock(clock), _http(http), _storage(storage), _network(network), _random(random),
@@ -51,6 +64,4 @@ private:
     std::string _refreshToken;
     std::string _state;
     uint64_t _tokenExpirationTimeMs = 0;
-
-    friend class WebServer;
 };

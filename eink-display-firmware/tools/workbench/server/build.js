@@ -15,11 +15,6 @@ const STD = '-std=gnu++17';
 // Arduino by design, never part of a host build.
 const EXCLUDED = ['main.cpp', 'platform/arduino'];
 
-// Temporarily excluded - references Arduino / ESP headers.
-const NOT_YET_HOST_CLEAN = [
-    'web/webServer.cpp',
-];
-
 function walk(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
@@ -34,7 +29,6 @@ function sourcesToCompile() {
     return walk(SRC)
         .map((f) => path.relative(SRC, f).split(path.sep).join('/'))
         .filter((f) => !skip.some((s) => f === s || f.startsWith(s + '/')))
-        .filter((f) => !NOT_YET_HOST_CLEAN.includes(f))
         .sort();
 }
 

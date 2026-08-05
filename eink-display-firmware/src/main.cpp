@@ -16,6 +16,7 @@
 #include "platform/arduino/epdPanel.h"
 #include "platform/arduino/espRandom.h"
 #include "platform/arduino/wifiNetwork.h"
+#include "platform/arduino/wifiTransport.h"
 #include "provider/auth.h"
 #include "web/webServer.h"
 #include "render/frameBuffer.h"
@@ -46,6 +47,7 @@ std::unique_ptr<EpdPanel> panel;
 std::unique_ptr<Screens> renderer;
 std::unique_ptr<WeatherCore> weatherCore;
 std::unique_ptr<WebServer> webServer;
+std::unique_ptr<WifiTransport> transport;
 
 void setup()
 {
@@ -72,6 +74,7 @@ void setup()
 
     webServer = std::make_unique<WebServer>(*systemClock, *network, *weatherCore, *updateScheduler,
                                             *panel, *auth, *configOverrides);
+    transport = std::make_unique<WifiTransport>(*systemClock, *webServer);
 
     Serial.print("Connecting to ");
     Serial.println(Config::Secret::wifiSsid);
@@ -105,14 +108,14 @@ void setup()
 
     configOverrides->init();
     auth->loadTokens();
-    webServer->init();
+    transport->begin();
 
     logger.critical("System startup");
 }
 
 void loop()
 {
-    webServer->loop();
+    transport->poll();
     weatherCore->loop();
 
     // TODO: light sleep causes issues - random reboots
