@@ -5,7 +5,7 @@
 // default-exports { id, title, init, apply, onShow, onHide, badge }. Adding a
 // panel means adding those three files and one entry in PANELS.
 
-const PANELS = ['preview', 'tests'];
+const PANELS = ['preview', 'admin', 'tests'];
 const PLACEHOLDERS = ['Icons', 'Fonts'];
 
 export const $ = (id) => document.getElementById(id);

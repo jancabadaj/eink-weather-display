@@ -87,7 +87,49 @@ async function render(mode) {
     if (!res.ok) {
         return { ok: false, error: res.output || `preview exited with ${res.code}` };
     }
-    fs.renameSync(tmp, out);
+
+    try {
+        fs.renameSync(tmp, out);
+    } catch (err) {
+        return { ok: false, error: `preview wrote no frame: ${err.message}` };
+    }
+    return { ok: true, error: '' };
+}
+
+// Renders the device's admin page from a supplied status snapshot.
+async function buildAdmin() {
+    fs.mkdirSync(DIST, { recursive: true });
+
+    const binary = path.join(DIST, 'admin');
+    const args = [
+        STD,
+        '-Wall',
+        '-Wextra',
+        `-I${SRC}`,
+        `-I${HARNESS}`,
+        `-I${ARDUINOJSON_INC}`,
+        path.join(HARNESS, 'admin_main.cpp'),
+        ...sourcesToCompile().map((f) => path.join(SRC, f)),
+        '-o',
+        binary,
+    ];
+
+    const res = await run(CXX, args, { cwd: ROOT });
+    return { ok: res.ok, output: res.output, errorLines: res.errorLines, binary };
+}
+
+async function renderAdmin(snapshot) {
+    const binary = path.join(DIST, 'admin');
+    if (!fs.existsSync(binary)) return { ok: false, error: 'admin binary not built' };
+
+    const statePath = path.join(DIST, 'admin-state.json');
+    const out = path.join(DIST, 'admin.html');
+    fs.writeFileSync(statePath, JSON.stringify(snapshot ?? {}));
+
+    const res = await run(binary, [statePath, out], { cwd: DIST });
+    if (!res.ok) {
+        return { ok: false, error: res.output || 'admin renderer failed' };
+    }
     return { ok: true, error: '' };
 }
 
@@ -268,4 +310,4 @@ async function runTests() {
     return { ok: true, results };
 }
 
-module.exports = { buildPreview, render, buildTests, runTests, declaredTestCount, DIST, SRC, HARNESS, TEST_DIR };
+module.exports = { buildPreview, render, buildAdmin, renderAdmin, buildTests, runTests, declaredTestCount, DIST, SRC, HARNESS, TEST_DIR };

@@ -6,7 +6,7 @@ const { WebSocketServer } = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-const { buildPreview, render, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR } = require('./build');
+const { buildPreview, render, buildAdmin, renderAdmin, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR } = require('./build');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -27,6 +27,22 @@ const state = {
         autoRun: true, // "Rerun on save" checkbox
     },
     testsPanelOpen: false, // set by the client when the Tests tab is shown
+
+    admin: {
+        ok: false,
+        output: '',
+        errorLines: [],
+        version: 0,
+        snapshot: {
+            loggedIn: true,
+            updatesStopped: false,
+            nightStartHour: 21,
+            nightEndHour: 5,
+            nightOverridden: false,
+            localAddress: '192.168.1.50',
+        },
+    },
+    adminPanelOpen: false,
 };
 
 let sockets = new Set();
@@ -39,14 +55,29 @@ function broadcast() {
 }
 
 function publicState() {
-    const { mode, frameVersion, build, building, lastBuildMs, tests } = state;
-    return { mode, frameVersion, build, building, lastBuildMs, tests };
+    const { mode, frameVersion, build, building, lastBuildMs, tests, admin } = state;
+    return { mode, frameVersion, build, building, lastBuildMs, tests, admin };
 }
 
 async function rebuild(reason) {
     if (state.building) return;
     state.building = true;
     broadcast();
+
+    try {
+        await rebuildInner(reason);
+    } catch (err) {
+        // A tool-side failure must never take the server down: the browser tab
+        // is meant to survive anything the build does.
+        console.error('[build] unexpected failure:', err);
+        state.build = { ok: false, output: String(err && err.stack ? err.stack : err), errorLines: [] };
+    } finally {
+        state.building = false;
+        broadcast();
+    }
+}
+
+async function rebuildInner(reason) {
 
     const started = Date.now();
     const result = await buildPreview();
@@ -66,12 +97,33 @@ async function rebuild(reason) {
 
     broadcast();
 
-    // Only pay for the test build while someone is actually watching it.
+    // Only pay for these builds while someone is actually watching them.
+    if (state.adminPanelOpen) {
+        await rerenderAdmin(reason);
+    }
     if (state.testsPanelOpen && state.tests.autoRun) {
         await rerunTests(reason);
     }
+}
 
-    state.building = false;
+async function rerenderAdmin(reason) {
+    const built = await buildAdmin();
+    if (!built.ok) {
+        state.admin = { ...state.admin, ok: false, output: built.output, errorLines: built.errorLines };
+        console.log(`[admin] ${reason} -> BUILD FAILED`);
+        broadcast();
+        return;
+    }
+
+    const rendered = await renderAdmin(state.admin.snapshot);
+    state.admin = {
+        ...state.admin,
+        ok: rendered.ok,
+        output: built.output,
+        errorLines: rendered.ok ? [] : [rendered.error],
+        version: state.admin.version + 1,
+    };
+    console.log(`[admin] ${reason} -> ${rendered.ok ? 'rendered' : 'FAILED'}`);
     broadcast();
 }
 
@@ -145,6 +197,30 @@ app.post('/api/mode/:mode', async (req, res) => {
 });
 
 app.use(express.json());
+
+app.get('/api/admin.html', (_req, res) => {
+    const file = path.join(DIST, 'admin.html');
+    if (!fs.existsSync(file)) return res.status(404).end();
+    res.set('Cache-Control', 'no-store');
+    res.type('text/html').send(fs.readFileSync(file));
+});
+
+app.post('/api/admin/active', async (req, res) => {
+    const open = !!req.body.active;
+    const wasClosed = !state.adminPanelOpen;
+    state.adminPanelOpen = open;
+    res.json({ ok: true });
+
+    if (open && wasClosed && state.admin.version === 0) {
+        await rerenderAdmin('admin panel opened');
+    }
+});
+
+app.post('/api/admin/snapshot', async (req, res) => {
+    state.admin = { ...state.admin, snapshot: { ...state.admin.snapshot, ...req.body } };
+    res.json({ ok: true });
+    await rerenderAdmin('snapshot changed');
+});
 
 app.post('/api/tests/active', async (req, res) => {
     const open = !!req.body.active;
