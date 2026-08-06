@@ -6,7 +6,19 @@ const { WebSocketServer } = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-const { buildPreview, render, buildAdmin, renderAdmin, buildTests, runTests, DIST, SRC, HARNESS, TEST_DIR } = require('./build');
+const generated = require('./generated');
+const {
+    buildPreview,
+    render,
+    buildAdmin,
+    renderAdmin,
+    buildTests,
+    runTests,
+    DIST,
+    SRC,
+    HARNESS,
+    TEST_DIR,
+} = require('./build');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -59,8 +71,15 @@ function publicState() {
     return { mode, frameVersion, build, building, lastBuildMs, tests, admin };
 }
 
+let pendingReason = null;
+
 async function rebuild(reason) {
-    if (state.building) return;
+    // A change that lands mid-build must not be lost; remember it and run again.
+    if (state.building) {
+        pendingReason = reason;
+        return;
+    }
+
     state.building = true;
     broadcast();
 
@@ -70,18 +89,31 @@ async function rebuild(reason) {
         // A tool-side failure must never take the server down: the browser tab
         // is meant to survive anything the build does.
         console.error('[build] unexpected failure:', err);
-        state.build = { ok: false, output: String(err && err.stack ? err.stack : err), errorLines: [] };
+        state.build = {
+            ok: false,
+            output: String(err && err.stack ? err.stack : err),
+            errorLines: [],
+        };
     } finally {
         state.building = false;
         broadcast();
     }
+
+    if (pendingReason) {
+        const queued = pendingReason;
+        pendingReason = null;
+        await rebuild(queued);
+    }
 }
 
 async function rebuildInner(reason) {
-
     const started = Date.now();
     const result = await buildPreview();
-    state.build = { ok: result.ok, output: result.output, errorLines: result.errorLines };
+    state.build = {
+        ok: result.ok,
+        output: result.output,
+        errorLines: result.errorLines,
+    };
 
     if (result.ok) {
         const r = await render(state.mode);
@@ -109,7 +141,12 @@ async function rebuildInner(reason) {
 async function rerenderAdmin(reason) {
     const built = await buildAdmin();
     if (!built.ok) {
-        state.admin = { ...state.admin, ok: false, output: built.output, errorLines: built.errorLines };
+        state.admin = {
+            ...state.admin,
+            ok: false,
+            output: built.output,
+            errorLines: built.errorLines,
+        };
         console.log(`[admin] ${reason} -> BUILD FAILED`);
         broadcast();
         return;
@@ -163,7 +200,9 @@ async function rerunTests(reason) {
 
     if (run.ok) {
         const { passed, failed } = run.results;
-        console.log(`[tests] ${reason} -> ${failed ? failed + ' FAILED' : 'all passed'} (${passed + failed} tests, ${state.tests.lastRunMs}ms)`);
+        console.log(
+            `[tests] ${reason} -> ${failed ? failed + ' FAILED' : 'all passed'} (${passed + failed} tests, ${state.tests.lastRunMs}ms)`,
+        );
     } else {
         console.log(`[tests] ${reason} -> runner error: ${run.error}`);
     }
@@ -196,7 +235,8 @@ app.post('/api/mode/:mode', async (req, res) => {
     res.json(publicState());
 });
 
-app.use(express.json());
+// Generated font tables run to hundreds of KB, well past the 100kb default.
+app.use(express.json({ limit: '8mb' }));
 
 app.get('/api/admin.html', (_req, res) => {
     const file = path.join(DIST, 'admin.html');
@@ -217,9 +257,40 @@ app.post('/api/admin/active', async (req, res) => {
 });
 
 app.post('/api/admin/snapshot', async (req, res) => {
-    state.admin = { ...state.admin, snapshot: { ...state.admin.snapshot, ...req.body } };
+    state.admin = {
+        ...state.admin,
+        snapshot: { ...state.admin.snapshot, ...req.body },
+    };
     res.json({ ok: true });
     await rerenderAdmin('snapshot changed');
+});
+
+app.get('/api/generated/:kind', (req, res) => {
+    try {
+        res.json({ names: generated.list(req.params.kind) });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.get('/api/generated/:kind/:name', (req, res) => {
+    try {
+        const contents = generated.read(req.params.kind, req.params.name);
+        if (contents === null) return res.status(404).json({ error: 'not found' });
+        res.json({ contents });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.post('/api/generated/:kind/:name', (req, res) => {
+    try {
+        const written = generated.write(req.params.kind, req.params.name, req.body.contents || '');
+        console.log(`[generated] wrote ${written}`);
+        res.json({ ok: true, path: written });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 app.post('/api/tests/active', async (req, res) => {

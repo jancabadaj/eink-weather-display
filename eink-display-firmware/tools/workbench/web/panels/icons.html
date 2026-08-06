@@ -1,0 +1,68 @@
+<div class="icons-col">
+    <div class="toolbar">
+        <label class="field">Name <input type="text" id="i-name" size="20" value="NewIcon" /></label>
+        <label class="field">W <input type="number" id="i-width" min="1" max="800" value="24" /></label>
+        <label class="field">H <input type="number" id="i-height" min="1" max="600" value="24" /></label>
+        <button id="i-resize">Resize</button>
+
+        <span class="sep"></span>
+
+        <div class="group">
+            <button data-tool="pen" aria-pressed="true">Pen</button>
+            <button data-tool="brush" aria-pressed="false">Brush</button>
+        </div>
+        <label class="field">R <input type="number" id="i-radius" min="1" max="40" value="3" /></label>
+
+        <span class="sep"></span>
+
+        <div class="group">
+            <button id="i-zoom-out" title="Zoom out">&minus;</button>
+            <button id="i-zoom-fit" title="Fit to view">Fit</button>
+            <button id="i-zoom-in" title="Zoom in">+</button>
+        </div>
+        <span id="i-zoom-label" class="muted-label">1&times;</span>
+
+        <span class="sep"></span>
+
+        <button id="i-clear">Clear</button>
+        <button id="i-invert">Invert</button>
+        <select id="i-load">
+            <option value="">Open…</option>
+        </select>
+        <label class="field"><input type="file" id="i-image" accept="image/*" /></label>
+
+        <span class="sep"></span>
+
+        <button id="i-save" class="primary">Save</button>
+        <span id="i-status"></span>
+
+        <label class="chk" style="margin-left: auto"
+            ><input type="checkbox" id="i-show-code" /> Show code</label
+        >
+    </div>
+
+    <div class="icons-body">
+        <div class="icons-canvas-wrap">
+            <canvas id="i-canvas"></canvas>
+        </div>
+        <div class="code-pane" id="i-code-pane" hidden>
+            <div class="code-actions">
+                <button id="i-copy">Copy all</button>
+                <button id="i-paste">Paste all</button>
+                <span id="i-code-status" class="muted-label"></span>
+            </div>
+            <pre class="card code-out" id="i-code"></pre>
+        </div>
+    </div>
+
+    <div class="toolbar image-bar" id="i-image-bar" hidden>
+        <span class="muted-label">Image</span>
+        <label class="field"
+            >Threshold <input type="range" id="i-threshold" min="1" max="254" value="128"
+        /></label>
+        <span id="i-threshold-label" class="muted-label">128</span>
+        <label class="chk"><input type="checkbox" id="i-dither" checked /> Dither</label>
+        <button id="i-use-image-size">Use image size</button>
+        <span id="i-image-info" class="muted-label"></span>
+    </div>
+</div>

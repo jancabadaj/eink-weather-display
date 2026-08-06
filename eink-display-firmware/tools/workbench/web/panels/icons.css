@@ -1,0 +1,85 @@
+.icons-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.icons-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 16px;
+}
+
+.icons-canvas-wrap {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: auto;
+    padding: 10px;
+}
+
+#i-canvas {
+    image-rendering: pixelated;
+    cursor: crosshair;
+    background: #fff;
+    display: block;
+}
+
+/* Only takes space when the code is actually being looked at. */
+.code-pane {
+    flex: 0 0 46%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.code-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+#i-code {
+    flex: 1;
+    min-height: 0;
+}
+
+.image-bar {
+    margin-top: 12px;
+    flex: 0 0 auto;
+}
+
+#i-status {
+    color: var(--muted);
+    font-size: 12px;
+}
+#i-status.ok {
+    color: var(--good);
+}
+#i-status.bad {
+    color: var(--bad);
+}
+
+.muted-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+select {
+    font: inherit;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+}
+
+input[type='range'] {
+    width: 130px;
+    accent-color: var(--accent);
+}

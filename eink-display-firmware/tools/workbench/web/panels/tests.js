@@ -71,13 +71,13 @@ function apply(t) {
             `<div class="test-row ${tc.ok ? 'pass' : 'fail'}">` +
                 `<span class="mark">${tc.ok ? '●' : '✕'}</span>` +
                 `<span class="nm">${esc(tc.name)}</span>` +
-                `<span class="ms">${tc.asserts.passed} asserts</span></div>`
+                `<span class="ms">${tc.asserts.passed} asserts</span></div>`,
         );
         for (const f of tc.failures) {
             rows.push(
                 `<div class="test-fail-detail">${esc(f.kind)}  ${esc(f.original)}` +
                     (f.expanded ? `\nwith  ${esc(f.expanded)}` : '') +
-                    `\n<span class="loc">${esc(f.file)}:${f.line}</span></div>`
+                    `\n<span class="loc">${esc(f.file)}:${f.line}</span></div>`,
             );
         }
     }

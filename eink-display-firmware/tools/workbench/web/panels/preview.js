@@ -1,5 +1,8 @@
 import { $ } from '../app.js';
 
+// The panel's own root; panels share a document, so queries stay inside it.
+let root = document;
+
 const PANEL_W = 800;
 const PANEL_H = 480;
 const GRID_MIN_SCALE = 3; // below this, 1px cells collapse into a wash
@@ -34,20 +37,21 @@ function layout() {
 
     wrap.classList.toggle(
         'pannable',
-        stage.clientWidth > wrap.clientWidth || stage.clientHeight > wrap.clientHeight
+        stage.clientWidth > wrap.clientWidth || stage.clientHeight > wrap.clientHeight,
     );
 
-    for (const b of document.querySelectorAll('[data-zoom]')) {
+    for (const b of root.querySelectorAll('[data-zoom]')) {
         b.setAttribute('aria-pressed', String(b.dataset.zoom === String(zoom)));
     }
 }
 
-function init() {
-    for (const b of document.querySelectorAll('[data-mode]')) {
+function init(panelRoot) {
+    root = panelRoot;
+    for (const b of root.querySelectorAll('[data-mode]')) {
         b.onclick = () => fetch('/api/mode/' + b.dataset.mode, { method: 'POST' });
     }
 
-    for (const b of document.querySelectorAll('[data-zoom]')) {
+    for (const b of root.querySelectorAll('[data-zoom]')) {
         b.onclick = () => {
             zoom = b.dataset.zoom === 'fit' ? 'fit' : Number(b.dataset.zoom);
             layout();
@@ -64,8 +68,7 @@ function init() {
         const scale = r.width / PANEL_W;
         const x = Math.floor((e.clientX - r.left) / scale);
         const y = Math.floor((e.clientY - r.top) / scale);
-        $('cursor').textContent =
-            x >= 0 && y >= 0 && x < PANEL_W && y < PANEL_H ? `x ${x}  y ${y}` : '—';
+        $('cursor').textContent = x >= 0 && y >= 0 && x < PANEL_W && y < PANEL_H ? `x ${x}  y ${y}` : '—';
     });
     $('frame-wrap').addEventListener('mouseleave', () => ($('cursor').textContent = '—'));
 
@@ -74,7 +77,12 @@ function init() {
     let from = null;
     wrap.addEventListener('mousedown', (e) => {
         if (!wrap.classList.contains('pannable')) return;
-        from = { x: e.clientX, y: e.clientY, left: wrap.scrollLeft, top: wrap.scrollTop };
+        from = {
+            x: e.clientX,
+            y: e.clientY,
+            left: wrap.scrollLeft,
+            top: wrap.scrollTop,
+        };
         wrap.classList.add('panning');
         e.preventDefault();
     });
@@ -117,7 +125,7 @@ function apply(s) {
 
     showBuildOutput(s.build, 'build-output');
 
-    for (const b of document.querySelectorAll('[data-mode]')) {
+    for (const b of root.querySelectorAll('[data-mode]')) {
         b.setAttribute('aria-pressed', String(b.dataset.mode === s.mode));
     }
 

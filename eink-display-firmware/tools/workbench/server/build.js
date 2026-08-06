@@ -77,14 +77,27 @@ async function buildPreview() {
 
 // Renders one screen. Leaves the previous frame in place on failure so the UI
 // keeps showing the last good image.
-async function render(mode) {
+// Renders run one at a time. Two overlapping ones would otherwise write the
+// same temp file and the slower one would find it already renamed away.
+let renderQueue = Promise.resolve();
+let renderSequence = 0;
+
+function render(mode) {
+    const next = renderQueue.then(() => renderOnce(mode));
+    // Keep the chain alive even when one render rejects.
+    renderQueue = next.catch(() => {});
+    return next;
+}
+
+async function renderOnce(mode) {
     const binary = path.join(DIST, 'preview');
     if (!fs.existsSync(binary)) return { ok: false, error: 'preview binary not built' };
 
     const out = path.join(DIST, 'frame.bmp');
-    const tmp = out + '.tmp';
+    const tmp = `${out}.${process.pid}.${++renderSequence}.tmp`;
     const res = await run(binary, [mode, tmp], { cwd: DIST });
     if (!res.ok) {
+        fs.rmSync(tmp, { force: true });
         return { ok: false, error: res.output || `preview exited with ${res.code}` };
     }
 
@@ -310,4 +323,16 @@ async function runTests() {
     return { ok: true, results };
 }
 
-module.exports = { buildPreview, render, buildAdmin, renderAdmin, buildTests, runTests, declaredTestCount, DIST, SRC, HARNESS, TEST_DIR };
+module.exports = {
+    buildPreview,
+    render,
+    buildAdmin,
+    renderAdmin,
+    buildTests,
+    runTests,
+    declaredTestCount,
+    DIST,
+    SRC,
+    HARNESS,
+    TEST_DIR,
+};

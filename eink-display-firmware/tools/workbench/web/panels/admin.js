@@ -50,10 +50,7 @@ function apply(s) {
     $('a-ip').value = snapshot.localAddress ?? '';
     applying = false;
 
-    showBuildOutput(
-        { ok: admin.ok, output: admin.output, errorLines: admin.errorLines },
-        'admin-output'
-    );
+    showBuildOutput({ ok: admin.ok, output: admin.output, errorLines: admin.errorLines }, 'admin-output');
 
     $('a-status').textContent = admin.ok ? 'rendered' : admin.version ? 'failed' : 'not rendered';
     $('a-status').style.color = admin.ok ? 'var(--good)' : 'var(--muted)';
@@ -70,7 +67,10 @@ export default {
     title: 'Admin',
     init,
     apply,
-    badge: (s) => (s && s.admin && s.admin.errorLines && s.admin.errorLines.length ? { text: '!', cls: 'fail' } : { text: '', cls: '' }),
+    badge: (s) =>
+        s && s.admin && s.admin.errorLines && s.admin.errorLines.length
+            ? { text: '!', cls: 'fail' }
+            : { text: '', cls: '' },
     onShow: () => setActive(true),
     onHide: () => setActive(false),
 };

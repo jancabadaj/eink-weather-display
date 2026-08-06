@@ -1,0 +1,58 @@
+.fonts-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.fonts-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 16px;
+}
+
+/* The preview takes the whole row back whenever the code is hidden. */
+.fonts-preview {
+    flex: 1;
+    overflow: auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.fonts-body .code-pane {
+    flex: 0 0 46%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.fonts-body .code-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+#f-code {
+    flex: 1;
+    min-height: 0;
+}
+#f-canvas {
+    background: #fff;
+    border-radius: 4px;
+    image-rendering: pixelated;
+}
+
+#f-status {
+    color: var(--muted);
+    font-size: 12px;
+}
+#f-status.ok {
+    color: var(--good);
+}
+#f-status.bad {
+    color: var(--bad);
+}
+
+#f-metrics {
+    min-width: 0;
+}

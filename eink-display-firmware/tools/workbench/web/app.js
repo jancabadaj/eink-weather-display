@@ -4,13 +4,16 @@
 // A panel is a folder-mate trio - panels/<id>.html / .css / .js - where the JS
 // default-exports { id, title, init, apply, onShow, onHide, badge }. Adding a
 // panel means adding those three files and one entry in PANELS.
+//
+// init() receives the panel's own root element. Panels share one document, so
+// querying from `document` would reach into whichever neighbour happens to use
+// the same attribute.
 
-const PANELS = ['preview', 'admin', 'tests'];
-const PLACEHOLDERS = ['Icons', 'Fonts'];
+const PANELS = ['preview', 'admin', 'icons', 'fonts', 'tests'];
+const PLACEHOLDERS = [];
 
 export const $ = (id) => document.getElementById(id);
-export const esc = (t) =>
-    String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+export const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 const modules = new Map();
 let active = null;
@@ -87,7 +90,7 @@ async function boot() {
         tab.onclick = () => select(id);
         nav.appendChild(tab);
 
-        mod.init?.();
+        mod.init?.(main);
     }
 
     for (const name of PLACEHOLDERS) {
