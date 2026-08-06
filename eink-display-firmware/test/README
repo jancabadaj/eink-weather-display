@@ -1,11 +1,26 @@
+Host test suite
 
-This directory is intended for PlatformIO Test Runner and project tests.
+These do NOT run under `pio test`. PlatformIO's runner is built around on-device
+testing and fights a native suite. They are built and run by a plain compiler
+invocation instead:
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+```bash
+cd tools/workbench && npm test
+```
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+The same build backs the workbench's Tests panel, which reruns on save.
+doctest is fetched through PlatformIO's dependency management, which is the only
+reason [env:native] exists in platformio.ini:
+
+```bash
+~/.platformio/penv/bin/pio pkg install -e native`
+```
+
+Layout:
+
+    *_test.cpp        test cases
+    doctestMain.cpp   the runner's entry point, compiled once
+    fakes/            mocks implementing the platform interfaces
+    fixtures/         captured Netatmo responses
+
+The host build is every .cpp under `src/` except `main.cpp` and `platform/arduino/`.
