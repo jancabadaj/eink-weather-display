@@ -81,3 +81,9 @@ eink-display-firmware/
   tools/workbench/    dev tool
   tools/logging/      optional Google Apps Script log sink
 ```
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify and share for any
+noncommercial purpose. Commercial use, including selling this software or products based on it,
+is not permitted.
