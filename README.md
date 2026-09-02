@@ -4,6 +4,8 @@ Weather display built using ESP32 and a 7.5" e-paper panel. It reads a
 [Netatmo](https://www.netatmo.com/) weather station and shows indoor and outdoor temperature,
 humidity, CO2 and a 48-hour pressure chart.
 
+![Photo](docs/photo.webp)
+
 ## Hardware
 
 - [Waveshare ESP32 Driver Board](https://www.waveshare.com/wiki/E-Paper_ESP32_Driver_Board)

@@ -9,6 +9,10 @@ namespace Planner
 
     bool isNightTime(int hour, int nightStartHour, int nightEndHour)
     {
+        if (nightStartHour == nightEndHour)
+        {
+            return false; // An empty window is no night
+        }
         if (nightStartHour < nightEndHour)
         {
             return hour >= nightStartHour && hour < nightEndHour;

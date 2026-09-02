@@ -21,7 +21,11 @@ std::string Auth::getRedirectUri() const
 
 std::string Auth::getLoginUrl()
 {
-    _state = generateState();
+    if (_state.empty())
+    {
+        _state = generateState();
+    }
+
     return std::string("https://api.netatmo.com/oauth2/authorize") +
            "?client_id=" + _credentials.clientId +
            "&redirect_uri=" + getRedirectUri() +

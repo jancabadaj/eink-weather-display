@@ -5,6 +5,7 @@
 // Sample data is fixed (including the timestamp) so every run is byte-identical
 // and the output can be diffed against a reference after a refactor.
 
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -19,23 +20,42 @@ namespace
     // 2025-01-15 14:30:00 UTC
     constexpr long long sampleTimestampMs = 1736951400000LL;
 
+    // One sample per chart slot, so the preview always shows the chart at the
+    // density the device draws it at whatever barCount is set to.
+    constexpr int sampleCount = Config::PressureChart::barCount;
+
+    // PressureHistory buckets readings, so samples any closer together than one
+    // bucket would collapse into each other and the chart would lose bars.
+    constexpr unsigned long bucketSeconds =
+        (Config::PressureChart::historyHours * 3600UL) / Config::PressureChart::barCount;
+
+    // A slow swing across the whole window with a smaller ripple on top: enough
+    // shape to read as a trend, enough bar-to-bar variation to spot a layout
+    // problem. Stays within the range a real barometer reports.
+    float samplePressure(int index)
+    {
+        constexpr float midpoint = 1004.0f;
+        constexpr float swing = 4.0f;
+        constexpr float ripple = 0.6f;
+        constexpr float twoPi = 6.2831853f;
+
+        const float phase = twoPi * (float)index / (float)sampleCount;
+        return midpoint + swing * std::sin(phase) + ripple * std::sin(phase * 5.0f);
+    }
+
     void renderSampleWeather(Screens &screens)
     {
         PressureHistory pressureHistory;
-        const float samplePressures[] = {
-            1007.5f, 1007.6f, 1007.8f, 1007.6f, 1007.9f, 1008.2f,
-            1007.1f, 1006.5f, 1005.9f, 1004.9f, 1004.2f, 1003.8f,
-            1003.5f, 1002.9f, 1002.5f, 1002.3f, 1001.6f, 1001.3f,
-            1000.5f, 999.9f, 1000.8f, 1001.9f, 1003.3f, 1004.5f};
 
         const unsigned long nowSec = (unsigned long)(sampleTimestampMs / 1000);
-        for (int i = 0; i < 24; i++)
+        for (int i = 0; i < sampleCount; i++)
         {
-            pressureHistory.addReading(nowSec - (23 - i) * 3600, samplePressures[i]);
+            pressureHistory.addReading(nowSec - (sampleCount - 1 - i) * bucketSeconds, samplePressure(i));
         }
 
         WeatherData data{};
-        data.internal = {22.5f, 55, 1004.5f, 30, 520};
+        // The reading the chart ends on, so the panel and the chart agree
+        data.internal = {22.5f, 55, samplePressure(sampleCount - 1), 30, 520};
         data.external = {-20.1f, 60};
         data.data_timestamp = std::chrono::milliseconds(sampleTimestampMs);
         data.retrieval_timestamp = std::chrono::milliseconds(sampleTimestampMs);

@@ -13,9 +13,8 @@
 // Internal helper template for string drawing
 // GetWidthFunc: function that takes (char c) and returns uint16_t width
 // DrawCharFunc: function that takes (uint16_t x, uint16_t y, char c)
-template <typename FontType, typename GetWidthFunc, typename DrawCharFunc>
-static uint16_t drawStringHelper(uint8_t *imageData, uint16_t xStart, uint16_t y, const char *str,
-                                 const FontType *font, Color color, uint16_t fontHeight,
+template <typename GetWidthFunc, typename DrawCharFunc>
+static uint16_t drawStringHelper(uint16_t xStart, uint16_t y, const char *str, uint16_t fontHeight,
                                  GetWidthFunc getWidth, DrawCharFunc drawCharFunc)
 {
     if (xStart > Config::Display::width || y > Config::Display::height)
@@ -168,14 +167,15 @@ uint16_t DrawUtils::drawShape(uint8_t *imageData, uint16_t x, uint16_t y, const 
 
 uint16_t DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const char *str, const Shape *font, Color color)
 {
-    auto getWidth = [&](char c) -> uint16_t
+    // Every glyph in a monospace font is the same width, so the character does not matter
+    auto getWidth = [&](char) -> uint16_t
     { return font->width; };
     auto drawCharFunc = [&](uint16_t cx, uint16_t cy, char c)
     {
         drawChar(imageData, cx, cy, c, font, color);
     };
 
-    return drawStringHelper(imageData, x, y, str, font, color, font->height, getWidth, drawCharFunc);
+    return drawStringHelper(x, y, str, font->height, getWidth, drawCharFunc);
 }
 
 uint16_t DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, const char c, const Shape *font, Color color)
@@ -198,7 +198,7 @@ uint16_t DrawUtils::drawString(uint8_t *imageData, uint16_t x, uint16_t y, const
         drawChar(imageData, cx, cy, c, font, color);
     };
 
-    return drawStringHelper(imageData, x, y, str, font, color, font->height, getWidth, drawCharFunc);
+    return drawStringHelper(x, y, str, font->height, getWidth, drawCharFunc);
 }
 
 uint16_t DrawUtils::drawChar(uint8_t *imageData, uint16_t x, uint16_t y, char c, const ProportionalFont *font, Color color)

@@ -71,7 +71,6 @@ Web::Response WebServer::applyConfig(const Web::Request &request)
         _configOverrides.setNightEndHour(hour);
     }
 
-    _app.restartUpdateLoop(); // apply immediately
     return Web::Response::seeOther("/");
 }
 
@@ -107,7 +106,6 @@ Web::Response WebServer::handle(const Web::Request &request)
     {
         logger.info("[WebServer] Config reset requested");
         _configOverrides.resetAll();
-        _app.restartUpdateLoop(); // apply immediately
         return Web::Response::seeOther("/");
     }
 

@@ -120,6 +120,37 @@ TEST_CASE("WebServer: oauthCallbackExchangesTheCode")
     CHECK(app.http.calls.back().body.find("code=abc") != std::string::npos);
 }
 
+TEST_CASE("WebServer: rerenderingThePageKeepsAnInFlightLoginValid")
+{
+    AppFixture app;
+    // The login link is handed out, then the status page is loaded again while
+    // the user is still on the provider's consent screen.
+    const std::string state = stateFromLoginUrl(app.auth.getLoginUrl());
+    REQUIRE(app.get("/").status == 200);
+
+    app.http.queueOk(R"({"access_token":"tok","refresh_token":"ref","expires_in":10800})");
+    app.get("/", {{"state", state}, {"code", "abc"}});
+
+    CHECK(app.auth.isLoggedIn());
+}
+
+TEST_CASE("WebServer: aConsumedStateIsNotAcceptedTwice")
+{
+    AppFixture app;
+    const std::string state = stateFromLoginUrl(app.auth.getLoginUrl());
+
+    app.http.queueOk(R"({"access_token":"tok","refresh_token":"ref","expires_in":10800})");
+    app.get("/", {{"state", state}, {"code", "abc"}});
+    REQUIRE(app.auth.isLoggedIn());
+
+    // A replay of the same callback finds the state already spent, and the next
+    // login link carries a different one.
+    const size_t callsBefore = app.http.calls.size();
+    app.get("/", {{"state", state}, {"code", "abc"}});
+    CHECK(app.http.calls.size() == callsBefore);
+    CHECK(stateFromLoginUrl(app.auth.getLoginUrl()) != state);
+}
+
 TEST_CASE("WebServer: rootWithOnlyOneCallbackParameterRendersThePage")
 {
     AppFixture app;

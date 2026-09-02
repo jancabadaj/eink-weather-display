@@ -16,13 +16,11 @@ void Screens::renderWeather(const WeatherData &data, const PressureHistory &pres
 
     DrawUtils::clearImage(_imageData);
 
-    // Internal
-    char tempStr[32];
-
     // Layout
     LayoutComponent layoutComp(_imageData);
     layoutComp.render();
 
+    // Internal
     // Temperature
     TemperatureComponent tempComp(_imageData, 80, 125);
     tempComp.render(data.internal.temperature);

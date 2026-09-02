@@ -79,6 +79,9 @@ void setup()
                                             *panel, *auth, *configOverrides);
     transport = std::make_unique<WifiTransport>(*systemClock, *webServer);
 
+    // Must be first, calls DEV_Module_Init(), which runs Serial.begin(), and brings up the SPI/GPIO module
+    panel->init();
+
     Serial.print("Connecting to ");
     Serial.println(Config::Secret::wifiSsid);
     WiFi.begin(Config::Secret::wifiSsid, Config::Secret::wifiPassword);
@@ -106,7 +109,6 @@ void setup()
         logger.info("[Logger] Serial-only logging");
     }
 
-    panel->init();
     panel->clear();
 
     configOverrides->init();

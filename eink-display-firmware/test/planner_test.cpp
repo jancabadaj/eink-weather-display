@@ -51,6 +51,21 @@ TEST_CASE("Planner: nightWindowWithinOneDay")
     CHECK_FALSE(Planner::isNightTime(22, 1, 5));
 }
 
+TEST_CASE("Planner: emptyNightWindowIsNeverNight")
+{
+    for (int hour = 0; hour < 24; hour++)
+    {
+        CHECK_FALSE(Planner::isNightTime(hour, 5, 5));
+    }
+
+    Planner::Settings settings;
+    settings.nightStartHourUtc = 5;
+    settings.nightEndHourUtc = 5;
+
+    const uint64_t now = atHour(3);
+    CHECK(Planner::planNext(now, now, settings).mode == Planner::Mode::Normal);
+}
+
 TEST_CASE("Planner: schedulesJustAfterTheStationsNextPublish")
 {
     Planner::Settings settings;
