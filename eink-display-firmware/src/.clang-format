@@ -1,0 +1,37 @@
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++17
+
+ColumnLimit: 0
+ReflowComments: false
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+NamespaceIndentation: All
+
+BreakBeforeBraces: Allman
+
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+
+# `uint8_t *imageData`, `const String &payload`
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+# Leave order exactly as it is written (so Arduino.h can stay before the rest)
+SortIncludes: false
+IncludeBlocks: Preserve
+
+AlignAfterOpenBracket: Align
+AlignTrailingComments: Always
+BreakConstructorInitializers: BeforeColon
+FixNamespaceComments: true
+IndentCaseLabels: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SpaceAfterCStyleCast: false

@@ -1,0 +1,46 @@
+<div class="preview-col">
+    <div class="toolbar">
+        <div class="group">
+            <button data-mode="weather" aria-pressed="true">Weather</button>
+            <button data-mode="night-mode" aria-pressed="false">Night mode</button>
+            <button data-mode="network-error" aria-pressed="false">Network error</button>
+        </div>
+
+        <span class="sep"></span>
+
+        <div class="group">
+            <button data-zoom="fit" aria-pressed="true">Fit</button>
+            <button data-zoom="1" aria-pressed="false">1&times;</button>
+            <button data-zoom="2" aria-pressed="false">2&times;</button>
+            <button data-zoom="4" aria-pressed="false">4&times;</button>
+            <button data-zoom="8" aria-pressed="false">8&times;</button>
+        </div>
+
+        <label class="chk" id="grid-label" title="Needs 3&times; or more to be readable">
+            <input type="checkbox" id="grid" checked /> Pixel grid
+        </label>
+
+        <span id="cursor">&mdash;</span>
+    </div>
+
+    <div class="frame-wrap" id="frame-wrap">
+        <div class="stage" id="stage">
+            <img id="frame" alt="rendered display" />
+            <div class="grid-overlay" id="grid-overlay"></div>
+        </div>
+    </div>
+
+    <details class="card build-output" id="build-output">
+        <summary id="build-output-summary"></summary>
+        <pre id="build-output-text"></pre>
+    </details>
+</div>
+
+<aside>
+    <div class="card">
+        <h2 class="section">Build</h2>
+        <div class="row"><span>Status</span><span id="s-status">&mdash;</span></div>
+        <div class="row"><span>Duration</span><span id="s-duration">&mdash;</span></div>
+        <div class="row"><span>Frame</span><span id="s-frame">&mdash;</span></div>
+    </div>
+</aside>

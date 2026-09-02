@@ -1,5 +1,16 @@
 {
     "editor.formatOnSave": true,
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "none",
+    "C_Cpp.codeAnalysis.clangTidy.enabled": false,
+
     "files.associations": {
         "testimagedata.c": "cpp",
         "array": "cpp",

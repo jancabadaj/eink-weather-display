@@ -1,0 +1,34 @@
+<div class="admin-col">
+    <div class="toolbar">
+        <label class="chk"><input type="checkbox" id="a-loggedin" /> Logged in</label>
+        <label class="chk"><input type="checkbox" id="a-stopped" /> Updates stopped</label>
+        <label class="chk"><input type="checkbox" id="a-override" /> Night override</label>
+
+        <span class="sep"></span>
+
+        <label class="field">Night <input type="number" id="a-night-start" min="0" max="23" /></label>
+        <label class="field">to <input type="number" id="a-night-end" min="0" max="23" /></label>
+        <label class="field">IP <input type="text" id="a-ip" size="12" /></label>
+    </div>
+
+    <details class="card build-output" id="admin-output">
+        <summary id="admin-output-summary"></summary>
+        <pre id="admin-output-text"></pre>
+    </details>
+
+    <div class="admin-frame">
+        <iframe id="admin-page" title="device admin page"></iframe>
+    </div>
+</div>
+
+<aside>
+    <div class="card">
+        <h2 class="section">Rendered page</h2>
+        <div class="row"><span>Status</span><span id="a-status">&mdash;</span></div>
+        <div class="row"><span>Version</span><span id="a-version">&mdash;</span></div>
+        <p style="color: var(--muted); margin-top: 12px">
+            The page the device serves, produced by the firmware's own rendering code from the status above.
+            Edits to <code>webUiTemplate.h</code> or <code>pages.cpp</code> rebuild it on save.
+        </p>
+    </div>
+</aside>

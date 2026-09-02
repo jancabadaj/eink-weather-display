@@ -1,0 +1,48 @@
+<div class="fonts-col">
+    <div class="toolbar">
+        <label class="field">TTF <input type="file" id="f-file" accept=".ttf,.otf,.woff,.woff2" /></label>
+        <label class="field">Height <input type="number" id="f-height" min="6" max="120" value="18" /></label>
+        <label class="field"
+            >Threshold <input type="range" id="f-threshold" min="1" max="254" value="128"
+        /></label>
+        <span id="f-threshold-label" class="muted-label">128</span>
+        <label class="field"
+            >Side padding <input type="number" id="f-padding" min="0" max="6" value="1"
+        /></label>
+        <label class="chk"><input type="checkbox" id="f-bold" /> Bold</label>
+
+        <span class="sep"></span>
+
+        <div class="group">
+            <button id="f-mode-prop" data-mode="proportional" aria-pressed="true">Proportional</button>
+            <button id="f-mode-mono" data-mode="monospace" aria-pressed="false">Monospace</button>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <label class="field">Name <input type="text" id="f-name" size="30" value="Font18_Custom" /></label>
+        <button id="f-save" class="primary">Save</button>
+        <span id="f-status"></span>
+        <span class="sep"></span>
+        <span class="muted-label" id="f-metrics"></span>
+
+        <label class="chk" style="margin-left: auto"
+            ><input type="checkbox" id="f-show-code" /> Show code</label
+        >
+    </div>
+
+    <div class="fonts-body">
+        <div class="card fonts-preview">
+            <h2 class="section">Rasterised glyphs</h2>
+            <canvas id="f-canvas"></canvas>
+        </div>
+        <div class="code-pane" id="f-code-pane" hidden>
+            <div class="code-actions">
+                <button id="f-copy">Copy all</button>
+                <button id="f-paste">Paste all</button>
+                <span id="f-code-status" class="muted-label"></span>
+            </div>
+            <pre class="card code-out" id="f-code"></pre>
+        </div>
+    </div>
+</div>

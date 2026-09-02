@@ -1,32 +1,21 @@
 #include "logger.h"
-#include <WiFi.h>
-#include <HTTPClient.h>
+
+#include <cstdio>
 
 // Global logger instance
 Logger logger;
 
-void Logger::init(const char *deploymentId, const char *apiKey)
+void Logger::addSink(LogSink &sink, LogLevel minLevel)
 {
-    // Check if both credentials are provided
-    if (deploymentId != nullptr && apiKey != nullptr &&
-        strlen(deploymentId) > 0 && strlen(apiKey) > 0)
+    if (_sinkCount < maxSinks)
     {
-        _deploymentId = String(deploymentId);
-        _apiKey = String(apiKey);
-        _googleSheetsEnabled = true;
-        info("[Logger] Google Sheets logging enabled");
-    }
-    else
-    {
-        _googleSheetsEnabled = false;
-        info("[Logger] Serial-only logging (no Google Sheets credentials)");
+        _sinks[_sinkCount++] = {&sink, minLevel};
     }
 }
 
-void Logger::setLogLevel(LogLevel level)
+void Logger::clearSinks()
 {
-    _minLevel = level;
-    info("[Logger] Log level set to %s", levelToString(level));
+    _sinkCount = 0;
 }
 
 void Logger::debug(const char *format, ...)
@@ -79,50 +68,29 @@ void Logger::log(LogLevel level, const char *format, ...)
 
 void Logger::logInternal(LogLevel level, const char *format, va_list args)
 {
-    // Format the message
+    size_t interested = 0;
+    for (size_t i = 0; i < _sinkCount; i++)
+    {
+        if (level >= _sinks[i].minLevel)
+        {
+            interested++;
+        }
+    }
+
+    if (interested == 0)
+    {
+        return; // nothing to format for
+    }
+
     vsnprintf(_buffer, LOG_BUFFER_SIZE, format, args);
 
-    // Always print to Serial
-    Serial.print("[");
-    Serial.print(levelToString(level));
-    Serial.print("] ");
-    Serial.println(_buffer);
-
-    // Send to Google Sheets if enabled and WiFi is connected
-    if (level >= _minLevel && _googleSheetsEnabled && WiFi.status() == WL_CONNECTED)
+    for (size_t i = 0; i < _sinkCount; i++)
     {
-        sendToGoogleSheets(_buffer, level);
+        if (level >= _sinks[i].minLevel)
+        {
+            _sinks[i].sink->write(level, _buffer);
+        }
     }
-}
-
-void Logger::sendToGoogleSheets(const char *message, LogLevel level)
-{
-    HTTPClient http;
-
-    // Build Google Apps Script URL
-    String url = "https://script.google.com/macros/s/" + _deploymentId + "/exec";
-
-    if (!http.begin(url))
-    {
-        return; // Silently fail
-    }
-
-    // Set headers for form data
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    // URL encode the log message (basic encoding)
-    String encodedMessage = String(message);
-    encodedMessage.replace(" ", "+");
-    encodedMessage.replace("\n", "%0A");
-    encodedMessage.replace("\r", "%0D");
-
-    String postData = "key=" + _apiKey +
-                      "&log=" + encodedMessage +
-                      "&level=" + String(levelToString(level));
-
-    // Send POST request (non-blocking, fire and forget)
-    http.POST(postData);
-    http.end();
 }
 
 const char *Logger::levelToString(LogLevel level)

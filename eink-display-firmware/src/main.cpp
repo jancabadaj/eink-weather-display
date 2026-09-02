@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <memory>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_sleep.h>
@@ -6,82 +7,124 @@
 #include "DEV_Config.h"
 
 #include "config.h"
-#include "updateScheduler.h"
-#include "hw/displayManager.h"
-#include "auth.h"
+#include "schedule/updateScheduler.h"
+#include "platform/arduino/arduinoClock.h"
+#include "platform/arduino/arduinoHttpClient.h"
+#include "platform/arduino/nvsStorage.h"
+#include "platform/arduino/serialSink.h"
+#include "platform/arduino/sheetsSink.h"
+#include "platform/arduino/epdPanel.h"
+#include "platform/arduino/espRandom.h"
+#include "platform/arduino/wifiNetwork.h"
+#include "platform/arduino/wifiTransport.h"
+#include "provider/auth.h"
+#include "provider/netatmoProvider.h"
 #include "web/webServer.h"
-#include "weatherRenderer.h"
-#include "weatherCore.h"
-#include "serverClock.h"
+#include "render/frameBuffer.h"
+#include "render/screens.h"
+#include "app.h"
+#include "schedule/serverClock.h"
 #include "logger.h"
 
-UBYTE *imageData; /* you have to edit the startup_stm32fxxx.s file and set a big enough heap size */
+// Must stay a file-scope static: at 48 KB this lands in .bss, where the linker
+// reserves it up front. As a local it would go on the loop task's stack, which
+// is 8 KB (CONFIG_ARDUINO_LOOP_STACK_SIZE), and overflow immediately.
+static FrameBuffer frame;
 
-std::shared_ptr<ConfigOverrides> configOverrides;
-std::shared_ptr<Auth> auth;
-std::shared_ptr<ServerClock> serverClock;
-std::shared_ptr<UpdateScheduler> updateScheduler;
-std::shared_ptr<DisplayManager> displayManager;
-std::shared_ptr<WeatherRenderer> renderer;
-std::shared_ptr<WeatherCore> weatherCore;
-std::shared_ptr<WebServer> webServer;
+std::unique_ptr<ArduinoClock> systemClock;
+std::unique_ptr<SerialSink> serialSink;
+std::unique_ptr<SheetsSink> sheetsSink;
+std::unique_ptr<ArduinoHttpClient> httpClient;
+std::unique_ptr<WifiNetwork> network;
+std::unique_ptr<EspRandom> randomSource;
+std::unique_ptr<NvsStorage> configStorage;
+std::unique_ptr<NvsStorage> authStorage;
+
+std::unique_ptr<ConfigOverrides> configOverrides;
+std::unique_ptr<Auth> auth;
+std::unique_ptr<ServerClock> serverClock;
+std::unique_ptr<UpdateScheduler> updateScheduler;
+std::unique_ptr<EpdPanel> panel;
+std::unique_ptr<Screens> renderer;
+std::unique_ptr<NetatmoProvider> provider;
+std::unique_ptr<App> app;
+std::unique_ptr<WebServer> webServer;
+std::unique_ptr<WifiTransport> transport;
 
 void setup()
 {
-  // Create a new image cache
-  uint16_t imageSize = Config::Display::widthBytes * Config::Display::heightBytes;
-  if ((imageData = (uint8_t *)malloc(imageSize)) == NULL)
-  {
-    Serial.println("Failed to allocate memory...");
-    while (1)
-      ;
-  }
+    // Initialize components
+    systemClock = std::make_unique<ArduinoClock>();
+    httpClient = std::make_unique<ArduinoHttpClient>();
+    network = std::make_unique<WifiNetwork>();
+    randomSource = std::make_unique<EspRandom>();
+    configStorage = std::make_unique<NvsStorage>("cfg");
+    authStorage = std::make_unique<NvsStorage>("auth");
 
-  // Initialize components
-  configOverrides = std::make_shared<ConfigOverrides>();
-  auth = std::make_shared<Auth>();
-  serverClock = std::make_shared<ServerClock>();
-  displayManager = std::make_shared<DisplayManager>(imageData);
-  renderer = std::make_shared<WeatherRenderer>(imageData);
-  updateScheduler = std::make_shared<UpdateScheduler>(serverClock, configOverrides);
-  weatherCore = std::make_shared<WeatherCore>(auth, renderer, displayManager, updateScheduler, serverClock);
-  webServer = std::make_shared<WebServer>(weatherCore, updateScheduler, displayManager, auth, configOverrides);
+    panel = std::make_unique<EpdPanel>();
+    renderer = std::make_unique<Screens>(frame);
 
-  // Initialize serial and display - must be first to allocate memory for imageData
-  displayManager->init();
-  displayManager->clearDisplay();
+    configOverrides = std::make_unique<ConfigOverrides>(*configStorage);
+    serverClock = std::make_unique<ServerClock>(*systemClock);
+    updateScheduler = std::make_unique<UpdateScheduler>(*systemClock, *serverClock, *configOverrides);
 
-  Serial.print("Connecting to ");
-  Serial.println(Config::Secret::wifiSsid);
-  WiFi.begin(Config::Secret::wifiSsid, Config::Secret::wifiPassword);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.print("WiFi connected. IP address: ");
-  Serial.println(WiFi.localIP());
+    auth = std::make_unique<Auth>(*systemClock, *httpClient, *authStorage, *network, *randomSource,
+                                  Credentials{Config::Secret::apiClientId, Config::Secret::apiClientSecret});
 
-  // Load persisted config overrides and tokens
-  configOverrides->init();
-  auth->loadTokens();
+    provider = std::make_unique<NetatmoProvider>(*httpClient, *auth);
+    app = std::make_unique<App>(*systemClock, *provider, *renderer, *panel, *updateScheduler,
+                                *serverClock);
 
-  // Initialize logging
-  logger.init(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
-  logger.setLogLevel(Config::Log::minRemoteLevel);
+    webServer = std::make_unique<WebServer>(*systemClock, *network, *app, *updateScheduler,
+                                            *panel, *auth, *configOverrides);
+    transport = std::make_unique<WifiTransport>(*systemClock, *webServer);
 
-  webServer->init();
-  logger.critical("System startup");
+    // Must be first, calls DEV_Module_Init(), which runs Serial.begin(), and brings up the SPI/GPIO module
+    panel->init();
+
+    Serial.print("Connecting to ");
+    Serial.println(Config::Secret::wifiSsid);
+    WiFi.begin(Config::Secret::wifiSsid, Config::Secret::wifiPassword);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("");
+    Serial.print("WiFi connected. IP address: ");
+    Serial.println(WiFi.localIP());
+
+    // Initialize logging
+    serialSink = std::make_unique<SerialSink>();
+    sheetsSink = std::make_unique<SheetsSink>(Config::Secret::logDeploymentId, Config::Secret::logApiKey);
+
+    logger.addSink(*serialSink, LogLevel::DEBUG);
+    if (sheetsSink->enabled())
+    {
+        logger.addSink(*sheetsSink, Config::Log::minRemoteLevel);
+        logger.info("[Logger] Google Sheets logging enabled");
+    }
+    else
+    {
+        logger.info("[Logger] Serial-only logging");
+    }
+
+    panel->clear();
+
+    configOverrides->init();
+    auth->loadTokens();
+    transport->begin();
+
+    logger.critical("System startup");
 }
 
 void loop()
 {
-  webServer->loop();
-  weatherCore->loop();
+    transport->poll();
+    app->tick();
 
-  // TODO: light sleep causes issues - random reboots
-  // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
-  // esp_light_sleep_start();
-  delay(1000);
+    // TODO: light sleep causes issues - random reboots
+    // esp_sleep_enable_timer_wakeup(1000 * 1000); // 1 second in microseconds
+    // esp_light_sleep_start();
+    delay(1000);
 }

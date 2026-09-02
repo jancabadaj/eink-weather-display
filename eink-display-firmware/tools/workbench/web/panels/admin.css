@@ -1,0 +1,32 @@
+.admin-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.admin-frame {
+    flex: 1;
+    min-height: 0;
+    background: #fff;
+    border: 1px solid #5a6273;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#admin-page {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+}
+
+.field #a-ip {
+    width: 120px;
+}

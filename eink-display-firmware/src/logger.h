@@ -1,19 +1,17 @@
 #pragma once
 
-#include <Arduino.h>
+#include <cstdarg>
+#include <cstddef>
+
 #include "config.h"
+#include "platform/logSink.h"
 
 class Logger
 {
 public:
-    Logger()
-        : _minLevel(LogLevel::DEBUG), _googleSheetsEnabled(false) {}
-
-    // Initialize with Google Sheets credentials (empty strings = Serial only)
-    void init(const char *deploymentId, const char *apiKey);
-
-    // Set minimum log level (default: DEBUG)
-    void setLogLevel(LogLevel level);
+    // There is a single global logger instance which delegates to each attached sink
+    void addSink(LogSink &sink, LogLevel minLevel);
+    void clearSinks();
 
     // Logging methods - use printf-style formatting
     void debug(const char *format, ...);
@@ -21,25 +19,25 @@ public:
     void warning(const char *format, ...);
     void error(const char *format, ...);
     void critical(const char *format, ...);
-
-    // Generic log with specified level
     void log(LogLevel level, const char *format, ...);
+
+    static const char *levelToString(LogLevel level);
 
 private:
     void logInternal(LogLevel level, const char *format, va_list args);
-    void sendToGoogleSheets(const char *message, LogLevel level);
-    const char *levelToString(LogLevel level);
 
-    LogLevel _minLevel;
+    static constexpr size_t maxSinks = 4;
+    struct Attached
+    {
+        LogSink *sink = nullptr;
+        LogLevel minLevel = LogLevel::DEBUG;
+    };
 
-    // Google Sheets configuration
-    String _deploymentId;
-    String _apiKey;
-    bool _googleSheetsEnabled;
+    Attached _sinks[maxSinks];
+    size_t _sinkCount = 0;
 
-    // Buffer for formatting messages
     static constexpr size_t LOG_BUFFER_SIZE = 512;
-    char _buffer[LOG_BUFFER_SIZE];
+    char _buffer[LOG_BUFFER_SIZE]{};
 };
 
 // Global logger instance

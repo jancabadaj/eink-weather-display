@@ -1,44 +1,42 @@
 #pragma once
 
-#include <WiFi.h>
-#include "../auth.h"
-#include "../hw/displayManager.h"
-#include "../weatherCore.h"
-#include "../configOverrides.h"
+#include "../platform/clock.h"
+#include "../platform/displayPanel.h"
+#include "../platform/network.h"
+#include "../provider/auth.h"
+#include "../schedule/updateScheduler.h"
+#include "../settings/configOverrides.h"
+#include "../app.h"
+#include "requestHandler.h"
+#include "statusSnapshot.h"
 
-class WebServer
+// The device's admin web UI
+// Not responsible for the transport, just handling requests and producing responses
+class WebServer : public RequestHandler
 {
 public:
-    WebServer(std::shared_ptr<WeatherCore> weatherCore,
-              std::shared_ptr<UpdateScheduler> scheduler,
-              std::shared_ptr<DisplayManager> displayManager,
-              std::shared_ptr<Auth> auth,
-              std::shared_ptr<ConfigOverrides> configOverrides)
-        : _weatherCore(weatherCore),
-          _scheduler(scheduler),
-          _displayManager(displayManager),
-          _auth(auth),
-          _configOverrides(configOverrides)
-    {
-    }
+    WebServer(Clock &clock,
+              Network &network,
+              App &app,
+              UpdateScheduler &scheduler,
+              DisplayPanel &display,
+              Auth &auth,
+              ConfigOverrides &configOverrides)
+        : _clock(clock), _network(network), _app(app), _scheduler(scheduler),
+          _display(display), _auth(auth), _configOverrides(configOverrides) {}
 
-    void init();
-    void loop();
+    Web::Response handle(const Web::Request &request) override;
+
+    StatusSnapshot captureStatus() const;
 
 private:
-    // true => action endpoints, response should be a redirect
-    // false => home page should be rendered
-    bool handleRequest(WiFiClient &client);
+    Web::Response applyConfig(const Web::Request &request);
 
-    void sendHomePage(WiFiClient &client);
-
-    static String formatDuration(unsigned long ms);
-    static String parseQueryParam(const String &header, const String &key);
-    static bool isValidInt(const String &s);
-
-    std::shared_ptr<WeatherCore> _weatherCore;
-    std::shared_ptr<UpdateScheduler> _scheduler;
-    std::shared_ptr<DisplayManager> _displayManager;
-    std::shared_ptr<Auth> _auth;
-    std::shared_ptr<ConfigOverrides> _configOverrides;
+    Clock &_clock;
+    Network &_network;
+    App &_app;
+    UpdateScheduler &_scheduler;
+    DisplayPanel &_display;
+    Auth &_auth;
+    ConfigOverrides &_configOverrides;
 };
